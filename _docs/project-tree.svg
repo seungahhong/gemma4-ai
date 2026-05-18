@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 720" font-family="-apple-system, system-ui, 'Noto Sans KR', sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 700" font-family="-apple-system, system-ui, 'Noto Sans KR', sans-serif">
   <defs>
     <style>
       .title { font-size: 20px; font-weight: 700; fill: #0f172a; }
@@ -21,110 +21,106 @@
 
   <text x="40" y="115" class="branch">├──</text>
   <text x="85" y="115" class="dir">_docs/</text>
-  <text x="320" y="115" class="desc">아키텍처 다이어그램 (SVG)</text>
+  <text x="320" y="115" class="desc">아키텍처 다이어그램 (SVG) + 시작 가이드</text>
 
   <text x="40" y="135" class="branch">├──</text>
   <text x="85" y="135" class="file">GEMMA.md</text>
   <text x="320" y="135" class="desc">프로젝트 지침 — 모든 system 프롬프트에 자동 프리펜드</text>
 
   <text x="40" y="155" class="branch">├──</text>
-  <text x="85" y="155" class="file">PRD.md</text>
-  <text x="320" y="155" class="desc">초기 구현 계획 (Product Requirements)</text>
+  <text x="85" y="155" class="file">README.md</text>
+  <text x="320" y="155" class="desc">사용자 가이드</text>
 
   <text x="40" y="175" class="branch">├──</text>
-  <text x="85" y="175" class="file">README.md</text>
-  <text x="320" y="175" class="desc">사용자 가이드</text>
-
-  <text x="40" y="195" class="branch">├──</text>
-  <text x="85" y="195" class="file">pyproject.toml</text>
-  <text x="320" y="195" class="desc">패키지 메타 + 의존성 + script: gemma</text>
+  <text x="85" y="175" class="file">pyproject.toml</text>
+  <text x="320" y="175" class="desc">패키지 메타 + 의존성 + script: gemma</text>
 
   <!-- src -->
-  <text x="40" y="225" class="branch">├──</text>
-  <text x="85" y="225" class="dir">src/gemma_cli/</text>
+  <text x="40" y="205" class="branch">├──</text>
+  <text x="85" y="205" class="dir">src/gemma_cli/</text>
+
+  <text x="85" y="225" class="branch">│   ├──</text>
+  <text x="150" y="225" class="file">__main__.py</text>
+  <text x="320" y="225" class="desc">엔트리 + 슬래시 라우팅 (rewrite_slash)</text>
 
   <text x="85" y="245" class="branch">│   ├──</text>
-  <text x="150" y="245" class="file">__main__.py</text>
-  <text x="320" y="245" class="desc">엔트리 + 슬래시 라우팅 (rewrite_slash)</text>
+  <text x="150" y="245" class="file">cli.py</text>
+  <text x="320" y="245" class="desc">click group · 8개 서브커맨드 등록</text>
 
   <text x="85" y="265" class="branch">│   ├──</text>
-  <text x="150" y="265" class="file">cli.py</text>
-  <text x="320" y="265" class="desc">click group · 8개 서브커맨드 등록</text>
+  <text x="150" y="265" class="dir">commands/</text>
+  <text x="320" y="265" class="desc">명령어별 모듈</text>
 
-  <text x="85" y="285" class="branch">│   ├──</text>
-  <text x="150" y="285" class="dir">commands/</text>
-  <text x="320" y="285" class="desc">명령어별 모듈</text>
+  <text x="85" y="285" class="branch">│   │   ├──</text>
+  <text x="180" y="285" class="file">_common.py</text>
+  <text x="320" y="285" class="desc">공통: client 생성, instructions 프리펜드</text>
 
   <text x="85" y="305" class="branch">│   │   ├──</text>
-  <text x="180" y="305" class="file">_common.py</text>
-  <text x="320" y="305" class="desc">공통: client 생성, instructions 프리펜드</text>
-
+  <text x="180" y="305" class="file">review.py · commit.py · pr.py</text>
   <text x="85" y="325" class="branch">│   │   ├──</text>
-  <text x="180" y="325" class="file">review.py · commit.py · pr.py</text>
-  <text x="85" y="345" class="branch">│   │   ├──</text>
-  <text x="180" y="345" class="file">refactor.py · analyze.py · ask.py</text>
-  <text x="85" y="365" class="branch">│   │   └──</text>
-  <text x="180" y="365" class="file">skills.py</text>
-  <text x="320" y="365" class="desc">skills + run 두 커맨드</text>
+  <text x="180" y="325" class="file">refactor.py · analyze.py · ask.py</text>
+  <text x="85" y="345" class="branch">│   │   └──</text>
+  <text x="180" y="345" class="file">skills.py</text>
+  <text x="320" y="345" class="desc">skills + run 두 커맨드</text>
 
-  <text x="85" y="385" class="branch">│   └──</text>
-  <text x="150" y="385" class="dir">services/</text>
-  <text x="320" y="385" class="desc">공통 인프라</text>
+  <text x="85" y="365" class="branch">│   └──</text>
+  <text x="150" y="365" class="dir">services/</text>
+  <text x="320" y="365" class="desc">공통 인프라</text>
+
+  <text x="85" y="385" class="branch">│       ├──</text>
+  <text x="180" y="385" class="file">config.py</text>
+  <text x="320" y="385" class="desc">YAML 설정 (model · temperature · 오버라이드)</text>
 
   <text x="85" y="405" class="branch">│       ├──</text>
-  <text x="180" y="405" class="file">config.py</text>
-  <text x="320" y="405" class="desc">YAML 설정 (model · temperature · 오버라이드)</text>
+  <text x="180" y="405" class="file">ollama_client.py</text>
+  <text x="320" y="405" class="desc">httpx 스트리밍 · /api/chat</text>
 
   <text x="85" y="425" class="branch">│       ├──</text>
-  <text x="180" y="425" class="file">ollama_client.py</text>
-  <text x="320" y="425" class="desc">httpx 스트리밍 · /api/chat</text>
+  <text x="180" y="425" class="file">git_ops.py</text>
+  <text x="320" y="425" class="desc">git diff/log/branch/apply/commit</text>
 
   <text x="85" y="445" class="branch">│       ├──</text>
-  <text x="180" y="445" class="file">git_ops.py</text>
-  <text x="320" y="445" class="desc">git diff/log/branch/apply/commit</text>
+  <text x="180" y="445" class="file">renderer.py</text>
+  <text x="320" y="445" class="desc">rich Live + Markdown 스트리밍</text>
 
   <text x="85" y="465" class="branch">│       ├──</text>
-  <text x="180" y="465" class="file">renderer.py</text>
-  <text x="320" y="465" class="desc">rich Live + Markdown 스트리밍</text>
+  <text x="180" y="465" class="file">prompts.py</text>
+  <text x="320" y="465" class="desc">명령어별 한국어 시스템 프롬프트</text>
 
   <text x="85" y="485" class="branch">│       ├──</text>
-  <text x="180" y="485" class="file">prompts.py</text>
-  <text x="320" y="485" class="desc">명령어별 한국어 시스템 프롬프트</text>
+  <text x="180" y="485" class="file">session.py</text>
+  <text x="320" y="485" class="desc">ask용 JSONL 세션</text>
 
   <text x="85" y="505" class="branch">│       ├──</text>
-  <text x="180" y="505" class="file">session.py</text>
-  <text x="320" y="505" class="desc">ask용 JSONL 세션</text>
+  <text x="180" y="505" class="file">approval.py</text>
+  <text x="320" y="505" class="desc">y/N/e 프롬프트 · $EDITOR 편집</text>
 
   <text x="85" y="525" class="branch">│       ├──</text>
-  <text x="180" y="525" class="file">approval.py</text>
-  <text x="320" y="525" class="desc">y/N/e 프롬프트 · $EDITOR 편집</text>
+  <text x="180" y="525" class="file">actions.py</text>
+  <text x="320" y="525" class="desc">스킬 액션: git-commit · gh-pr · 입력 자동수집</text>
 
   <text x="85" y="545" class="branch">│       ├──</text>
-  <text x="180" y="545" class="file">actions.py</text>
-  <text x="320" y="545" class="desc">스킬 액션: git-commit · gh-pr · 입력 자동수집</text>
+  <text x="180" y="545" class="file">instructions.py</text>
+  <text x="320" y="545" class="desc">GEMMA.md 자동 탐색/프리펜드</text>
 
-  <text x="85" y="565" class="branch">│       ├──</text>
-  <text x="180" y="565" class="file">instructions.py</text>
-  <text x="320" y="565" class="desc">GEMMA.md 자동 탐색/프리펜드</text>
-
-  <text x="85" y="585" class="branch">│       └──</text>
-  <text x="180" y="585" class="file">skills.py</text>
-  <text x="320" y="585" class="desc">스킬 파싱 · 발견 · 치환 ({{input}}, {{key}})</text>
+  <text x="85" y="565" class="branch">│       └──</text>
+  <text x="180" y="565" class="file">skills.py</text>
+  <text x="320" y="565" class="desc">스킬 파싱 · 발견 · 치환 ({{input}}, {{key}})</text>
 
   <!-- tests -->
-  <text x="40" y="615" class="branch">└──</text>
-  <text x="85" y="615" class="dir">tests/</text>
-  <text x="320" y="615" class="desc">pytest — 모든 ollama 호출은 respx로 모킹</text>
+  <text x="40" y="595" class="branch">└──</text>
+  <text x="85" y="595" class="dir">tests/</text>
+  <text x="320" y="595" class="desc">pytest — 모든 ollama 호출은 respx로 모킹</text>
+
+  <text x="85" y="615" class="branch">    ├──</text>
+  <text x="150" y="615" class="file">test_config.py · test_ollama_client.py · test_git_ops.py</text>
 
   <text x="85" y="635" class="branch">    ├──</text>
-  <text x="150" y="635" class="file">test_config.py · test_ollama_client.py · test_git_ops.py</text>
+  <text x="150" y="635" class="file">test_session.py · test_renderer.py · test_instructions.py</text>
 
   <text x="85" y="655" class="branch">    ├──</text>
-  <text x="150" y="655" class="file">test_session.py · test_renderer.py · test_instructions.py</text>
+  <text x="150" y="655" class="file">test_skills.py · test_skill_action.py · test_slash_routing.py</text>
 
-  <text x="85" y="675" class="branch">    ├──</text>
-  <text x="150" y="675" class="file">test_skills.py · test_skill_action.py · test_slash_routing.py</text>
-
-  <text x="85" y="695" class="branch">    └──</text>
-  <text x="150" y="695" class="file">test_commands_smoke.py · test_pr_parser.py · test_refactor_diff_clean.py</text>
+  <text x="85" y="675" class="branch">    └──</text>
+  <text x="150" y="675" class="file">test_commands_smoke.py · test_pr_parser.py · test_refactor_diff_clean.py</text>
 </svg>
