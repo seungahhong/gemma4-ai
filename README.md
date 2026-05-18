@@ -1,0 +1,435 @@
+# gemma-cli
+
+`gemma4` (ollama) 기반 로컬 개발 보조 CLI. **코드 리뷰**, **커밋/PR 메시지 생성**, **리팩토링**, **코드 분석**, **자유 질의**를 단일 명령어 `gemma`에서 한국어로 제공한다. 사용자 정의 **프로젝트 지침(`GEMMA.md`)** 과 **스킬(`*.md`)** 도 지원.
+
+> 🚀 **처음 설치하시는 분은 [`_docs/GETTING_STARTED.md`](_docs/GETTING_STARTED.md) 부터 보세요.**
+> Python·uv·ollama·gemma4·gemma-cli 설치와 첫 명령 성공까지 단계별 검증 포함.
+
+```text
+gemma ────┬── review     코드 리뷰
+          ├── commit     커밋 메시지 생성 + 대화형 승인
+          ├── pr         PR 제목/본문 생성 + 대화형 승인
+          ├── refactor   unified diff 제안 + 미리보기 + 적용
+          ├── analyze    구조/의존성/잠재 이슈 분석
+          ├── ask        자유 질의 (단발 / REPL / 세션 재개)
+          ├── skills     등록된 사용자 정의 스킬 목록
+          ├── run NAME   스킬 실행
+          └── /NAME      스킬 실행 (슬래시 alias, 예: gemma /commit)
+```
+
+## 아키텍처
+
+전체 구조와 데이터 흐름은 아래 다이어그램으로 정리되어 있다. 원본은 [`_docs/`](_docs/) 디렉터리에 SVG로 보관 — 텍스트 기반이라 git diff/PR 리뷰가 가능하다.
+
+![아키텍처 개요](_docs/architecture.svg)
+
+스킬 자동화(`gemma /commit`) 한 사이클의 단계별 흐름:
+
+![commit 자동화 플로우](_docs/command-flow.svg)
+
+프로젝트 트리(상세 책임 포함):
+
+![프로젝트 트리](_docs/project-tree.svg)
+
+---
+
+## 목차
+0. [아키텍처](#아키텍처)
+1. [전제 조건](#1-전제-조건)
+2. [설치](#2-설치)
+3. [빠른 시작](#3-빠른-시작)
+4. [명령어 레퍼런스](#4-명령어-레퍼런스)
+   - [review](#review--코드-리뷰)
+   - [commit](#commit--커밋-메시지-생성)
+   - [pr](#pr--pr-제목본문-생성)
+   - [refactor](#refactor--파일-리팩토링)
+   - [analyze](#analyze--구조의존성-분석)
+   - [ask](#ask--자유-질의)
+   - [skills / run](#skills--run--사용자-정의-스킬)
+5. [프로젝트 지침 `GEMMA.md`](#5-프로젝트-지침-gemmamd)
+6. [사용자 정의 스킬](#6-사용자-정의-스킬)
+7. [설정 파일](#7-설정-파일)
+8. [개발 / 테스트](#8-개발--테스트)
+9. [문제 해결](#9-문제-해결)
+
+---
+
+## 1. 전제 조건
+
+- macOS / Linux
+- Python ≥ 3.11
+- [ollama](https://ollama.com) 설치 (`brew install ollama` 또는 공식 설치 스크립트)
+- ollama 서버 실행 + 모델 다운로드:
+
+```bash
+# 별도 터미널
+ollama serve
+
+# 모델 받기 (기본 권장: 가벼운 e4b)
+ollama pull gemma4:e4b
+
+# refactor·리뷰 품질을 더 높이고 싶다면 큰 모델도 받아두기
+ollama pull gemma4:26b
+```
+
+`git`은 `review`/`commit`/`pr`/`refactor` 사용 시 필수. `gh` CLI는 `pr` 명령어로 실제 PR을 생성할 때만 필요.
+
+## 2. 설치
+
+[`uv`](https://docs.astral.sh/uv/)를 권장.
+
+```bash
+# uv 미설치 시
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 전역 도구로 설치 (어디서나 `gemma` 명령 사용)
+uv tool install .
+
+# 또는 개발 모드 (현재 디렉터리에서만 사용)
+uv sync --extra dev
+uv run gemma --help
+```
+
+## 3. 빠른 시작
+
+```bash
+# 1) ollama 가동 확인
+curl -s http://localhost:11434/api/version
+
+# 2) 기본 설정 파일 생성 (선택)
+mkdir -p ~/.config/gemma-cli
+cat > ~/.config/gemma-cli/config.yaml <<'YAML'
+model: gemma4:e4b
+host: http://localhost:11434
+temperature: 0.2
+commands:
+  refactor:
+    model: gemma4:26b   # 리팩토링은 더 큰 모델이 안정적
+YAML
+
+# 3) 사용해보기
+gemma ask "Python에서 list와 tuple 차이를 한 줄로 설명해줘."
+```
+
+---
+
+## 4. 명령어 레퍼런스
+
+모든 명령어는 한국어로 응답하며 결과는 `rich`로 스트리밍 렌더링됨.
+
+### `review` — 코드 리뷰
+
+```bash
+gemma review                  # 스테이징된 변경(없으면 언스테이징) 리뷰
+gemma review src/foo.py       # 특정 파일 리뷰
+gemma review src/             # 디렉터리 단위 리뷰 (50KB 미만 파일 묶어 전달)
+```
+
+출력 형식 (모델 시스템 프롬프트로 강제):
+- `## 요약`
+- `## 우선순위별 이슈` — 🔴 Critical / 🟡 Major / 🟢 Minor
+- `## 개선 제안` — 코드 스니펫 포함
+
+### `commit` — 커밋 메시지 생성
+
+스테이징된 변경에 대해 Conventional Commits 한국어 메시지를 생성한다.
+
+```bash
+git add <변경된 파일들>
+gemma commit
+# → 생성된 메시지 표시
+# → [y/N/e=편집] 프롬프트
+#    y: 그대로 커밋
+#    N: 취소
+#    e: $EDITOR(vi 기본)로 편집 후 다시 [y/N/e]
+```
+
+생성되는 메시지 예:
+```
+feat: 곱셈 함수 추가
+
+multiply 함수와 실행 예제를 추가합니다.
+```
+
+### `pr` — PR 제목/본문 생성
+
+base 브랜치 대비 현재 브랜치의 모든 변경을 분석해 제목·본문을 만든다.
+
+```bash
+gemma pr                  # 기본 base: main
+gemma pr --base develop
+```
+
+승인 후 `gh` CLI가 설치되어 있으면 실제로 `gh pr create`를 호출. 없으면 제목/본문만 출력해 수동 복붙용으로 안내.
+
+본문은 다음 골격을 따른다:
+```markdown
+## 요약
+- 핵심 변경 3-5개 불릿
+
+## 테스트 계획
+- [ ] 항목 1
+- [ ] 항목 2
+```
+
+### `refactor` — 파일 리팩토링
+
+지정된 파일을 unified diff 형식으로 리팩토링 제안 → 컬러 미리보기 → 승인 시 `git apply`.
+
+```bash
+gemma refactor src/foo.py
+gemma refactor src/foo.py -i "함수 분리하고 타입 힌트 추가"
+```
+
+- `-i / --instruction` — 리팩토링 지시. 생략 시 기본값 `"가독성과 유지보수성을 개선해줘."`
+- `e4b` 모델은 diff 형식이 가끔 깨질 수 있어 **`commands.refactor.model: gemma4:26b` 오버라이드 권장**
+- patch 적용 실패 시 원본 파일은 변경되지 않고 사유가 표시됨
+
+### `analyze` — 구조/의존성 분석
+
+```bash
+gemma analyze              # 현재 디렉터리
+gemma analyze src/gemma_cli/services
+```
+
+출력:
+- `## 구조` — 모듈별 책임 표
+- `## 의존성` — 외부 패키지 + 내부 결합
+- `## 잠재 이슈` — 보안/성능/유지보수 관점의 우려
+
+큰 디렉터리는 50KB 미만 파일까지만 샘플링 후 전송(전체 80KB까지).
+
+### `ask` — 자유 질의
+
+```bash
+gemma ask "이 코드 왜 느려?"            # 단발 질의 (세션 자동 생성)
+gemma ask -i                             # 대화형 REPL 진입
+gemma ask --resume LAST                  # 직전 세션 이어가기
+gemma ask --resume 20260518T112009-dd3   # 특정 세션 ID로 재개
+gemma ask --new "처음부터 다시"          # --resume 무시하고 새 세션
+```
+
+REPL 모드 안에서:
+- `:exit` / `:quit` / `:q` — 종료
+- `:clear` — 히스토리 초기화 (파일 세션은 유지)
+
+세션은 `~/.local/share/gemma-cli/sessions/<id>.jsonl`에 한 줄 = 한 메시지 형태로 저장. 종료 시 마지막에 `(세션 ID: ...)` 가 표시된다.
+
+### `skills` / `run` — 사용자 정의 스킬
+
+```bash
+gemma skills                                   # 등록된 스킬 표 출력 (이름/설명/input/action/출처)
+gemma run <이름>                                # input 없이 실행
+gemma run <이름> path/to/file.ts                # 파일 내용을 {{input}}으로
+gemma run <이름> path/to/dir/                   # 디렉터리 묶음을 {{input}}으로
+gemma run <이름> --input "인라인 텍스트"        # 인라인 텍스트
+gemma run <이름> --input "..." --arg lang=en   # 추가 변수 치환
+
+# 슬래시 alias — 첫 인자가 '/'로 시작하면 자동으로 `run`으로 라우팅된다.
+gemma /commit                                   # == gemma run commit
+gemma /pr --base develop                        # == gemma run pr --base develop
+```
+
+자세한 형식은 [§6 사용자 정의 스킬](#6-사용자-정의-스킬) 참고.
+
+### 빌트인과 스킬의 관계
+
+`commit`/`pr`은 빌트인 커맨드(`gemma commit`, `gemma pr`)로도, 동명의 스킬(`gemma /commit`, `gemma /pr`)로도 호출 가능하다.
+
+| | 빌트인 | 스킬 |
+|---|--------|------|
+| 호출 | `gemma commit` | `gemma /commit` (또는 `gemma run commit`) |
+| 프롬프트 변경 | 코드 수정 필요 | `~/.config/gemma-cli/skills/commit.md` 편집 |
+| 입력/액션 변경 | 불가 | frontmatter `input:` / `action:` |
+| 추천 용도 | 그대로 잘 동작할 때 | 우리 팀 컨벤션·이슈 링크·이모지 등 커스터마이즈 |
+
+---
+
+## 5. 프로젝트 지침 `GEMMA.md`
+
+`GEMMA.md`(또는 `gemma.md`)를 현재 디렉터리 또는 상위 디렉터리에 두면, **모든 명령 실행 시 시스템 프롬프트 뒤에 자동으로 덧붙여진다.** Claude Code의 `CLAUDE.md`와 같은 역할.
+
+예 — `프로젝트루트/GEMMA.md`:
+
+```markdown
+# 우리 팀 코드 리뷰 가이드
+
+- 답변은 항상 한국어로 한다.
+- 모든 코드 예시에는 한국어 주석을 단다.
+- 외부 라이브러리를 제안할 때는 라이선스를 함께 명시한다.
+- 보안 이슈를 발견하면 OWASP 카테고리도 함께 표기한다.
+```
+
+발견 우선순위: cwd → cwd의 부모 → 그 부모 → 홈까지. 가장 먼저 발견된 한 파일이 적용된다.
+
+---
+
+## 6. 사용자 정의 스킬
+
+자주 쓰는 프롬프트 템플릿을 마크다운 파일로 저장해 `gemma run <이름>`으로 호출.
+
+### 저장 위치 (뒤가 앞을 덮어씀)
+
+1. `~/.config/gemma-cli/skills/<이름>.md` — **사용자 전역**
+2. `./.gemma/skills/<이름>.md` — **프로젝트 한정** (cwd → 부모 트리 탐색)
+
+### 형식
+
+YAML frontmatter + 본문 (마크다운 자유):
+
+```markdown
+---
+name: explain
+description: 코드/텍스트를 초급 개발자에게 친절히 설명
+input: manual         # 선택. manual(기본) / staged-diff / branch-diff
+action: print         # 선택. print(기본) / git-commit / gh-pr
+base: main            # action: gh-pr 또는 input: branch-diff 일 때 사용
+---
+
+다음을 초급 개발자 수준으로, 비유를 곁들여 단계별로 설명해주세요.
+
+---
+
+{{input}}
+```
+
+### `input` (입력 자동 수집)
+
+| 값 | 동작 |
+|----|------|
+| `manual` (기본) | `--input` / 위치 인자 / 빈 문자열 |
+| `staged-diff` | `git diff --staged` 결과를 `{{input}}`에 자동 채움 (스테이지 비어 있으면 에러) |
+| `branch-diff` | `git diff <base>...HEAD` + 커밋 로그를 자동 채움 (`base:` 또는 `--base`로 지정) |
+
+### `action` (모델 응답 후 실행)
+
+| 값 | 동작 |
+|----|------|
+| `print` (기본) | 응답을 그대로 터미널에 스트리밍 |
+| `git-commit` | 응답을 커밋 메시지로 보고 y/N/e 프롬프트 후 `git commit` |
+| `gh-pr` | 응답을 `TITLE: ...\n---\n본문` 형식으로 파싱, y/N/e 후 `gh pr create` |
+
+### 치환 변수
+
+| 변수 | 어디서 채워지나 |
+|------|-----------------|
+| `{{input}}` | `input:` 설정 또는 `--input` / 위치 인자 |
+| `{{<key>}}` | `--arg <key>=<value>`로 전달한 임의 키 (여러 번 가능) |
+
+### 예시 스킬
+
+`~/.config/gemma-cli/skills/naming.md`:
+```markdown
+---
+name: naming
+description: 변수/함수 이름 후보 3개 제안
+---
+
+다음 코드를 보고 더 나은 변수·함수 이름 후보 3개를 제안하세요.
+각 후보는 `- name` 형식으로 한 줄씩, 마지막에 한 줄 추천 이유.
+
+{{input}}
+```
+
+`./.gemma/skills/release-note.md` (프로젝트 한정):
+```markdown
+---
+name: release-note
+description: 변경 로그에서 사용자 친화 릴리스 노트 작성
+---
+
+언어: {{lang}}
+다음 변경 로그를 사용자 친화적인 릴리스 노트로 변환하세요.
+스타일은 우리 팀 규칙({{lang}})을 따릅니다.
+
+---
+
+{{input}}
+```
+
+```bash
+gemma run release-note CHANGELOG.md --arg lang=ko
+```
+
+---
+
+## 7. 설정 파일
+
+위치: `~/.config/gemma-cli/config.yaml` (XDG, `XDG_CONFIG_HOME` 환경변수가 있으면 그 경로 우선)
+
+전체 옵션:
+
+```yaml
+# 기본 모델
+model: gemma4:e4b
+
+# ollama 서버 주소
+host: http://localhost:11434
+
+# 0.0(보수적) ~ 1.0+(창의적). 기본 0.2
+temperature: 0.2
+
+# 명령어별 오버라이드 (선택)
+commands:
+  refactor:
+    model: gemma4:26b      # 더 정확한 diff 필요
+  ask:
+    temperature: 0.7       # 자유 질의는 약간 더 풀어주기
+  analyze:
+    model: gemma4:26b
+```
+
+설정 파일이 없으면 위 기본값으로 동작.
+
+저장 경로 요약:
+
+| 용도 | 경로 |
+|------|------|
+| 설정 | `~/.config/gemma-cli/config.yaml` |
+| 사용자 스킬 | `~/.config/gemma-cli/skills/*.md` |
+| 프로젝트 스킬 | `<repo>/.gemma/skills/*.md` |
+| 프로젝트 지침 | `<repo>/GEMMA.md` |
+| 세션 로그 | `~/.local/share/gemma-cli/sessions/*.jsonl` |
+
+---
+
+## 8. 개발 / 테스트
+
+```bash
+# 의존성 설치 (개발 의존성 포함)
+uv sync --extra dev
+
+# 테스트 실행 (네트워크 없이 동작 - respx로 ollama 모킹)
+uv run pytest -q
+
+# 자세히
+uv run pytest -v
+
+# 특정 파일만
+uv run pytest tests/test_skills.py -v
+
+# 코드 직접 실행
+uv run gemma --help
+uv run gemma ask "테스트"
+```
+
+프로젝트 구조는 [`_docs/project-tree.svg`](_docs/project-tree.svg) 참고. 핵심 책임:
+
+- `src/gemma_cli/commands/` — click 서브커맨드 정의 (빌트인 6 + 스킬 2)
+- `src/gemma_cli/services/` — 공통 인프라 (ollama·git·렌더링·세션·승인·액션·지침·스킬)
+- `src/gemma_cli/__main__.py` — `gemma` 엔트리 + 슬래시 라우팅
+- `tests/` — pytest, 모든 ollama 호출은 `respx` 모킹
+
+## 9. 문제 해결
+
+| 증상 | 원인 / 해결 |
+|------|-------------|
+| `ollama 서버에 연결할 수 없습니다` | 별도 터미널에서 `ollama serve` 실행 |
+| `model 'gemma4:e4b' not found` | `ollama pull gemma4:e4b` |
+| `gemma commit` → "스테이징된 변경이 없습니다" | `git add <파일>` 후 다시 시도 |
+| `gemma pr` → "...와 비교한 변경사항이 없습니다" | `--base` 브랜치가 맞는지, 커밋이 푸시되었는지 확인 |
+| `gemma refactor` → `corrupt patch` | 모델이 만든 diff 형식이 깨짐. `commands.refactor.model: gemma4:26b`로 변경 |
+| `gh` CLI 없이 `gemma pr` 승인 | 본문이 콘솔에 출력되니 직접 복사해 PR 생성 |
+| 응답이 너무 짧다 / 보수적이다 | `temperature: 0.6` 정도로 올려보기 |
+| 응답이 영어로 나온다 | `GEMMA.md`에 "모든 답변은 한국어"를 명시하거나 시스템 프롬프트 확인 |
+| `gemma run <이름>` → "찾을 수 없습니다" | `gemma skills`로 등록 위치/이름 확인. frontmatter `name:` 값이 사용된다 |

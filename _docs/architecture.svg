@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 760" font-family="-apple-system, system-ui, 'Noto Sans KR', sans-serif">
+  <defs>
+    <style>
+      .title { font-size: 20px; font-weight: 700; fill: #0f172a; }
+      .layer-label { font-size: 12px; font-weight: 600; fill: #64748b; letter-spacing: 0.08em; }
+      .box-title { font-size: 14px; font-weight: 700; fill: #0f172a; }
+      .box-body { font-size: 12px; fill: #334155; }
+      .mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; fill: #1e293b; }
+      .note { font-size: 11px; fill: #64748b; font-style: italic; }
+      .arrow { stroke: #94a3b8; stroke-width: 1.5; fill: none; }
+      .arrow-label { font-size: 10px; fill: #64748b; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="490" y="30" class="title" text-anchor="middle">gemma-cli — 아키텍처 개요</text>
+
+  <!-- LAYER 1: Entry / Shell -->
+  <text x="40" y="65" class="layer-label">1. ENTRY</text>
+  <rect x="40" y="75" width="900" height="70" rx="10" fill="#eff6ff" stroke="#bfdbfe"/>
+  <text x="60" y="100" class="box-title">사용자 셸 / CLI 엔트리</text>
+  <text x="60" y="120" class="mono">$ gemma review src/foo.py</text>
+  <text x="60" y="135" class="mono">$ gemma /commit          ← 슬래시 alias (rewrite_slash in __main__.py)</text>
+  <text x="640" y="120" class="mono">$ gemma run pr --base develop</text>
+  <text x="640" y="135" class="mono">$ gemma ask -i           ← 대화형 REPL</text>
+
+  <!-- arrow -->
+  <line x1="490" y1="150" x2="490" y2="175" class="arrow" marker-end="url(#arrowhead)"/>
+
+  <!-- LAYER 2: CLI Group -->
+  <text x="40" y="180" class="layer-label">2. CLI</text>
+  <rect x="40" y="190" width="900" height="135" rx="10" fill="#f0fdf4" stroke="#bbf7d0"/>
+  <text x="60" y="215" class="box-title">Click CLI Group (cli.py)</text>
+  <text x="60" y="232" class="note">/슬래시는 sys.argv 단계에서 run 으로 재작성됨</text>
+
+  <!-- Built-in commands -->
+  <rect x="60" y="245" width="430" height="65" rx="6" fill="#ffffff" stroke="#86efac"/>
+  <text x="75" y="263" class="box-title">빌트인 커맨드 (commands/*.py)</text>
+  <text x="75" y="282" class="mono">review · commit · pr · refactor · analyze · ask</text>
+  <text x="75" y="300" class="box-body">git diff/staged 자동 수집 → 모델 호출 → 대화형 승인 → git/gh 실행</text>
+
+  <!-- Skills commands -->
+  <rect x="500" y="245" width="430" height="65" rx="6" fill="#ffffff" stroke="#86efac"/>
+  <text x="515" y="263" class="box-title">스킬 커맨드 (commands/skills.py)</text>
+  <text x="515" y="282" class="mono">skills · run NAME [PATH] [--input ...] [--arg k=v]</text>
+  <text x="515" y="300" class="box-body">사용자 정의 .md 템플릿 + frontmatter(input·action) 실행</text>
+
+  <!-- arrow -->
+  <line x1="490" y1="330" x2="490" y2="355" class="arrow" marker-end="url(#arrowhead)"/>
+
+  <!-- LAYER 3: Services -->
+  <text x="40" y="360" class="layer-label">3. SERVICES (services/*.py)</text>
+  <rect x="40" y="370" width="900" height="195" rx="10" fill="#fefce8" stroke="#fde68a"/>
+
+  <!-- service boxes 5 per row × 2 rows -->
+  <g>
+    <rect x="55" y="385" width="170" height="55" rx="6" fill="#ffffff" stroke="#facc15"/>
+    <text x="65" y="405" class="box-title">config.py</text>
+    <text x="65" y="423" class="box-body">YAML 설정, 명령어별</text>
+    <text x="65" y="436" class="box-body">model/temperature 오버라이드</text>
+  </g>
+  <g>
+    <rect x="235" y="385" width="170" height="55" rx="6" fill="#ffffff" stroke="#facc15"/>
+    <text x="245" y="405" class="box-title">ollama_client.py</text>
+    <text x="245" y="423" class="box-body">httpx 스트리밍</text>
+    <text x="245" y="436" class="box-body">/api/chat 호출</text>
+  </g>
+  <g>
+    <rect x="415" y="385" width="170" height="55" rx="6" fill="#ffffff" stroke="#facc15"/>
+    <text x="425" y="405" class="box-title">git_ops.py</text>
+    <text x="425" y="423" class="box-body">staged/unstaged/branch</text>
+    <text x="425" y="436" class="box-body">diff · log · apply · commit</text>
+  </g>
+  <g>
+    <rect x="595" y="385" width="170" height="55" rx="6" fill="#ffffff" stroke="#facc15"/>
+    <text x="605" y="405" class="box-title">renderer.py</text>
+    <text x="605" y="423" class="box-body">rich Live + Markdown</text>
+    <text x="605" y="436" class="box-body">스트리밍 청크 누적 렌더</text>
+  </g>
+  <g>
+    <rect x="775" y="385" width="150" height="55" rx="6" fill="#ffffff" stroke="#facc15"/>
+    <text x="785" y="405" class="box-title">prompts.py</text>
+    <text x="785" y="423" class="box-body">명령어별 시스템</text>
+    <text x="785" y="436" class="box-body">프롬프트 상수</text>
+  </g>
+
+  <g>
+    <rect x="55" y="450" width="170" height="55" rx="6" fill="#ffffff" stroke="#facc15"/>
+    <text x="65" y="470" class="box-title">session.py</text>
+    <text x="65" y="488" class="box-body">ask용 JSONL 세션</text>
+    <text x="65" y="501" class="box-body">저장 / 로드 / resume</text>
+  </g>
+  <g>
+    <rect x="235" y="450" width="170" height="55" rx="6" fill="#ffffff" stroke="#facc15"/>
+    <text x="245" y="470" class="box-title">approval.py</text>
+    <text x="245" y="488" class="box-body">y/N/e 프롬프트</text>
+    <text x="245" y="501" class="box-body">$EDITOR 편집</text>
+  </g>
+  <g>
+    <rect x="415" y="450" width="170" height="55" rx="6" fill="#ffffff" stroke="#facc15"/>
+    <text x="425" y="470" class="box-title">actions.py</text>
+    <text x="425" y="488" class="box-body">스킬 액션 실행기</text>
+    <text x="425" y="501" class="box-body">git-commit · gh-pr</text>
+  </g>
+  <g>
+    <rect x="595" y="450" width="170" height="55" rx="6" fill="#ffffff" stroke="#facc15"/>
+    <text x="605" y="470" class="box-title">instructions.py</text>
+    <text x="605" y="488" class="box-body">GEMMA.md 자동 탐색</text>
+    <text x="605" y="501" class="box-body">cwd → 부모 트리</text>
+  </g>
+  <g>
+    <rect x="775" y="450" width="150" height="55" rx="6" fill="#ffffff" stroke="#facc15"/>
+    <text x="785" y="470" class="box-title">skills.py</text>
+    <text x="785" y="488" class="box-body">스킬 파싱/탐색</text>
+    <text x="785" y="501" class="box-body">frontmatter · 치환</text>
+  </g>
+
+  <text x="60" y="540" class="note">— 명령어별 모델 오버라이드(예: refactor → gemma4:26b)는 config.py가 결정 —</text>
+  <text x="60" y="555" class="note">— GEMMA.md 지침은 모든 모델 호출 시 system 프롬프트 뒤에 자동 프리펜드 —</text>
+
+  <!-- arrow -->
+  <line x1="200" y1="570" x2="200" y2="600" class="arrow" marker-end="url(#arrowhead)"/>
+  <line x1="430" y1="570" x2="430" y2="600" class="arrow" marker-end="url(#arrowhead)"/>
+  <line x1="660" y1="570" x2="660" y2="600" class="arrow" marker-end="url(#arrowhead)"/>
+  <line x1="850" y1="570" x2="850" y2="600" class="arrow" marker-end="url(#arrowhead)"/>
+
+  <!-- LAYER 4: External + Storage -->
+  <text x="40" y="605" class="layer-label">4. 외부 시스템 / 로컬 저장소</text>
+
+  <g>
+    <rect x="60" y="615" width="270" height="115" rx="10" fill="#fef2f2" stroke="#fecaca"/>
+    <text x="75" y="638" class="box-title">ollama (HTTP)</text>
+    <text x="75" y="657" class="mono">http://localhost:11434</text>
+    <text x="75" y="676" class="box-body">POST /api/chat (stream)</text>
+    <text x="75" y="694" class="box-body">기본 모델: gemma4:e4b</text>
+    <text x="75" y="712" class="box-body">큰 모델: gemma4:26b</text>
+  </g>
+
+  <g>
+    <rect x="340" y="615" width="180" height="115" rx="10" fill="#f5f3ff" stroke="#ddd6fe"/>
+    <text x="355" y="638" class="box-title">git (subprocess)</text>
+    <text x="355" y="657" class="box-body">diff · staged · log</text>
+    <text x="355" y="676" class="box-body">branch · apply</text>
+    <text x="355" y="694" class="box-body">commit</text>
+  </g>
+
+  <g>
+    <rect x="530" y="615" width="180" height="115" rx="10" fill="#ecfeff" stroke="#a5f3fc"/>
+    <text x="545" y="638" class="box-title">gh CLI</text>
+    <text x="545" y="657" class="box-body">PR 생성 시에만</text>
+    <text x="545" y="676" class="box-body">미설치면 수동</text>
+    <text x="545" y="694" class="box-body">복붙용 안내</text>
+  </g>
+
+  <g>
+    <rect x="720" y="615" width="220" height="115" rx="10" fill="#f0f9ff" stroke="#bae6fd"/>
+    <text x="735" y="638" class="box-title">로컬 파일</text>
+    <text x="735" y="657" class="mono">~/.config/gemma-cli/</text>
+    <text x="735" y="673" class="mono">  config.yaml · skills/</text>
+    <text x="735" y="689" class="mono">~/.local/share/gemma-cli/</text>
+    <text x="735" y="705" class="mono">  sessions/*.jsonl</text>
+    <text x="735" y="721" class="mono">&lt;repo&gt;/GEMMA.md · .gemma/</text>
+  </g>
+</svg>

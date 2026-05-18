@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 620" font-family="-apple-system, system-ui, 'Noto Sans KR', sans-serif">
+  <defs>
+    <style>
+      .title { font-size: 20px; font-weight: 700; fill: #0f172a; }
+      .step-num { font-size: 12px; font-weight: 700; fill: #ffffff; }
+      .step-title { font-size: 13px; font-weight: 700; fill: #0f172a; }
+      .step-body { font-size: 11px; fill: #475569; }
+      .mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; fill: #1e293b; }
+      .note { font-size: 11px; fill: #94a3b8; }
+    </style>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <text x="490" y="30" class="title" text-anchor="middle">gemma /commit 자동화 플로우</text>
+
+  <!-- step 1 -->
+  <g>
+    <rect x="40" y="60" width="900" height="65" rx="8" fill="#eff6ff" stroke="#bfdbfe"/>
+    <circle cx="65" cy="92" r="14" fill="#2563eb"/>
+    <text x="65" y="97" class="step-num" text-anchor="middle">1</text>
+    <text x="90" y="83" class="step-title">사용자 입력 + 슬래시 라우팅</text>
+    <text x="90" y="100" class="mono">$ gemma /commit       →   rewrite_slash()   →   $ gemma run commit</text>
+    <text x="90" y="116" class="note">__main__.py 가 sys.argv 의 첫 비-옵션 인자에 '/' 접두가 있으면 'run NAME' 으로 재작성</text>
+  </g>
+  <line x1="490" y1="125" x2="490" y2="145" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- step 2 -->
+  <g>
+    <rect x="40" y="148" width="900" height="65" rx="8" fill="#f0fdf4" stroke="#bbf7d0"/>
+    <circle cx="65" cy="180" r="14" fill="#16a34a"/>
+    <text x="65" y="185" class="step-num" text-anchor="middle">2</text>
+    <text x="90" y="170" class="step-title">스킬 탐색 (skills.py)</text>
+    <text x="90" y="188" class="mono">~/.config/gemma-cli/skills/commit.md  ⊕  &lt;repo&gt;/.gemma/skills/commit.md</text>
+    <text x="90" y="204" class="note">사용자 전역 → 프로젝트 한정 순으로 로드. 같은 이름이면 프로젝트가 덮어쓴다.</text>
+  </g>
+  <line x1="490" y1="213" x2="490" y2="233" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- step 3 -->
+  <g>
+    <rect x="40" y="236" width="900" height="80" rx="8" fill="#fefce8" stroke="#fde68a"/>
+    <circle cx="65" cy="280" r="14" fill="#ca8a04"/>
+    <text x="65" y="285" class="step-num" text-anchor="middle">3</text>
+    <text x="90" y="258" class="step-title">입력 자동 수집 (actions.collect_input)</text>
+    <text x="90" y="276" class="mono">frontmatter:  input: commit-context</text>
+    <text x="90" y="292" class="mono">→ git branch --show-current  +  git diff --staged  +  git log -10 --oneline</text>
+    <text x="90" y="308" class="note">결과를 {{input}} 자리에 채워 사용자 메시지를 렌더링한다.</text>
+  </g>
+  <line x1="490" y1="316" x2="490" y2="336" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- step 4 -->
+  <g>
+    <rect x="40" y="339" width="900" height="85" rx="8" fill="#fef2f2" stroke="#fecaca"/>
+    <circle cx="65" cy="385" r="14" fill="#dc2626"/>
+    <text x="65" y="390" class="step-num" text-anchor="middle">4</text>
+    <text x="90" y="361" class="step-title">모델 호출 (ollama_client.chat_stream)</text>
+    <text x="90" y="379" class="mono">system  ← prompts.ASK_SYSTEM + GEMMA.md (instructions.with_instructions)</text>
+    <text x="90" y="395" class="mono">user    ← skill.body (렌더링됨 — 규칙 + diff + branch)</text>
+    <text x="90" y="411" class="note">commands.run.model 오버라이드가 있으면 gemma4:26b 등으로 호출. action=git-commit 이라 stream=False.</text>
+  </g>
+  <line x1="490" y1="424" x2="490" y2="444" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- step 5 -->
+  <g>
+    <rect x="40" y="447" width="900" height="80" rx="8" fill="#f5f3ff" stroke="#ddd6fe"/>
+    <circle cx="65" cy="490" r="14" fill="#7c3aed"/>
+    <text x="65" y="495" class="step-num" text-anchor="middle">5</text>
+    <text x="90" y="469" class="step-title">대화형 승인 (approval.prompt_yne)</text>
+    <text x="90" y="487" class="mono">=== 생성된 커밋 메시지 ===                [y/N/e=편집]</text>
+    <text x="90" y="503" class="mono">FRONTEND-1234 feat: 로그인 페이지에 소셜 로그인 버튼 추가</text>
+    <text x="90" y="519" class="note">e 선택 시 $EDITOR(vi 기본) 로 열고 다시 [y/N/e] 프롬프트. N 이면 즉시 종료.</text>
+  </g>
+  <line x1="490" y1="527" x2="490" y2="547" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- step 6 -->
+  <g>
+    <rect x="40" y="550" width="900" height="55" rx="8" fill="#ecfeff" stroke="#a5f3fc"/>
+    <circle cx="65" cy="578" r="14" fill="#0891b2"/>
+    <text x="65" y="583" class="step-num" text-anchor="middle">6</text>
+    <text x="90" y="572" class="step-title">실행 (actions._do_git_commit)</text>
+    <text x="90" y="590" class="mono">git commit -m "&lt;message&gt;"      →   ✓ 커밋 완료</text>
+  </g>
+</svg>
