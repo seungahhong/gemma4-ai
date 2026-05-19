@@ -2,10 +2,60 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from pathlib import Path
 
 import click
 
 from gemma_cli.services import approval, git_ops
+
+
+_SCAN_IGNORED = {
+    ".git", "__pycache__", ".venv", "venv", "node_modules",
+    "dist", "build", ".pytest_cache", ".next", ".turbo",
+    ".idea", ".vscode", ".mypy_cache", ".ruff_cache",
+}
+
+
+def _is_git_repo_without_calling_git(cwd: Path | None = None) -> bool:
+    cur = (cwd or Path.cwd()).resolve()
+    for d in [cur, *cur.parents]:
+        if (d / ".git").exists():
+            return True
+    return False
+
+
+def _scan_workspace_files(
+    root: Path,
+    *,
+    max_file_size: int = 50_000,
+    total_cap: int = 80_000,
+) -> tuple[list[str], str]:
+    file_list: list[str] = []
+    chunks: list[str] = []
+    used = 0
+    for p in sorted(root.rglob("*")):
+        if not p.is_file() or set(p.parts) & _SCAN_IGNORED:
+            continue
+        rel = p.relative_to(root)
+        file_list.append(str(rel))
+        if used >= total_cap:
+            continue
+        try:
+            size = p.stat().st_size
+        except OSError:
+            continue
+        if size >= max_file_size:
+            continue
+        try:
+            text = p.read_text(errors="replace")
+        except OSError:
+            continue
+        chunk = f"### {rel}\n```\n{text}\n```"
+        if used + len(chunk) > total_cap:
+            continue
+        chunks.append(chunk)
+        used += len(chunk)
+    return file_list, "\n\n".join(chunks)
 
 
 def collect_input(source: str, base: str = "main") -> str:
@@ -26,6 +76,25 @@ def collect_input(source: str, base: str = "main") -> str:
         if not diff.strip():
             raise click.UsageError(f"{base}와 비교한 변경사항이 없습니다.")
         return f"## 커밋 로그\n{log}\n\n## diff\n```diff\n{diff}\n```"
+    if source == "branch-or-files":
+        if _is_git_repo_without_calling_git():
+            diff = git_ops.branch_diff(base)
+            log = git_ops.branch_log(base)
+            if not diff.strip():
+                raise click.UsageError(f"{base}와 비교한 변경사항이 없습니다.")
+            return f"## 커밋 로그\n{log}\n\n## diff\n```diff\n{diff}\n```"
+        cwd = Path.cwd()
+        file_list, body = _scan_workspace_files(cwd)
+        if not file_list:
+            raise click.UsageError("현재 디렉터리에서 분석할 파일을 찾지 못했습니다.")
+        listing = "\n".join(f"- {f}" for f in file_list)
+        return (
+            "## 컨텍스트\n"
+            "git 저장소가 아니어서 현재 디렉터리의 파일 목록과 내용을 사용합니다.\n\n"
+            f"## 작업 디렉터리\n{cwd}\n\n"
+            f"## 파일 목록\n{listing}\n\n"
+            f"## 파일 내용 (50KB 미만, 총 80KB 한도)\n{body}"
+        )
     if source == "commit-context":
         if not git_ops.is_repo():
             raise click.UsageError("commit-context 입력은 git 저장소에서만 사용 가능합니다.")

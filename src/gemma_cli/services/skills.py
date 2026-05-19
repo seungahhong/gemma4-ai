@@ -8,7 +8,7 @@ import yaml
 
 
 VALID_ACTIONS = {"print", "git-commit", "gh-pr"}
-VALID_INPUTS = {"manual", "staged-diff", "branch-diff", "commit-context"}
+VALID_INPUTS = {"manual", "staged-diff", "branch-diff", "commit-context", "branch-or-files"}
 
 
 @dataclass

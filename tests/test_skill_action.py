@@ -133,6 +133,93 @@ def test_commit_context_includes_branch_and_log(tmp_home: Path, tmp_git_repo: Pa
     assert "FRONTEND-1234 feat: 월드 추가" in log.stdout
 
 
+def test_branch_or_files_uses_branch_diff_in_git_repo(tmp_home: Path, tmp_git_repo: Path, monkeypatch) -> None:
+    _write_skill(
+        tmp_home / ".config" / "gemma-cli" / "skills" / "jira.md",
+        "---\nname: jira\ninput: branch-or-files\naction: print\nbase: main\n---\n\n{{input}}\n",
+    )
+    subprocess.run(["git", "checkout", "-q", "-b", "feature/PROJ-77-flow"], cwd=tmp_git_repo, check=True)
+    (tmp_git_repo / "added.txt").write_text("hello\nworld\n")
+    subprocess.run(["git", "add", "added.txt"], cwd=tmp_git_repo, check=True)
+    env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+           "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+    subprocess.run(["git", "commit", "-q", "-m", "wip"], cwd=tmp_git_repo, check=True, env=env)
+    monkeypatch.chdir(tmp_git_repo)
+
+    captured: dict[str, str] = {}
+
+    def _capture(request):
+        payload = json.loads(request.content.decode())
+        captured["content"] = next(
+            m["content"] for m in payload["messages"] if m["role"] == "user"
+        )
+        return _ollama_response("ok")
+
+    with respx.mock(base_url="http://localhost:11434") as mock:
+        mock.post("/api/chat").mock(side_effect=_capture)
+        runner = CliRunner()
+        res = runner.invoke(cli, ["run", "jira"])
+    assert res.exit_code == 0, res.output
+    assert "## 커밋 로그" in captured["content"]
+    assert "+world" in captured["content"]
+    assert "git 저장소가 아니어서" not in captured["content"]
+
+
+def test_branch_or_files_scans_files_outside_git(tmp_home: Path, tmp_path: Path, monkeypatch) -> None:
+    work = tmp_path / "workspace"
+    work.mkdir()
+    (work / "main.py").write_text("def add(a, b):\n    return a + b\n")
+    (work / "README.md").write_text("# Project\nsmall description\n")
+    sub = work / "module"
+    sub.mkdir()
+    (sub / "util.py").write_text("VALUE = 42\n")
+    (sub / "ignore_me").mkdir()
+    (sub / "ignore_me" / "x").write_text("x")
+    (work / "node_modules").mkdir()
+    (work / "node_modules" / "junk.js").write_text("module.exports={};\n")
+
+    _write_skill(
+        tmp_home / ".config" / "gemma-cli" / "skills" / "jira.md",
+        "---\nname: jira\ninput: branch-or-files\naction: print\nbase: main\n---\n\n{{input}}\n",
+    )
+    monkeypatch.chdir(work)
+
+    captured: dict[str, str] = {}
+
+    def _capture(request):
+        payload = json.loads(request.content.decode())
+        captured["content"] = next(
+            m["content"] for m in payload["messages"] if m["role"] == "user"
+        )
+        return _ollama_response("ok")
+
+    with respx.mock(base_url="http://localhost:11434") as mock:
+        mock.post("/api/chat").mock(side_effect=_capture)
+        runner = CliRunner()
+        res = runner.invoke(cli, ["run", "jira"])
+    assert res.exit_code == 0, res.output
+    content = captured["content"]
+    assert "git 저장소가 아니어서" in content
+    assert "main.py" in content
+    assert "module/util.py" in content
+    assert "VALUE = 42" in content
+    assert "node_modules" not in content
+
+
+def test_branch_or_files_empty_dir_errors(tmp_home: Path, tmp_path: Path, monkeypatch) -> None:
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    _write_skill(
+        tmp_home / ".config" / "gemma-cli" / "skills" / "jira.md",
+        "---\nname: jira\ninput: branch-or-files\naction: print\nbase: main\n---\n\n{{input}}\n",
+    )
+    monkeypatch.chdir(empty)
+    runner = CliRunner()
+    res = runner.invoke(cli, ["run", "jira"])
+    assert res.exit_code != 0
+    assert "분석할 파일" in res.output
+
+
 def test_current_branch(tmp_git_repo: Path) -> None:
     from gemma_cli.services import git_ops
 

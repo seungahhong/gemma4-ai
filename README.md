@@ -300,6 +300,8 @@ base: main            # action: gh-pr 또는 input: branch-diff 일 때 사용
 | `manual` (기본) | `--input` / 위치 인자 / 빈 문자열 |
 | `staged-diff` | `git diff --staged` 결과를 `{{input}}`에 자동 채움 (스테이지 비어 있으면 에러) |
 | `branch-diff` | `git diff <base>...HEAD` + 커밋 로그를 자동 채움 (`base:` 또는 `--base`로 지정) |
+| `commit-context` | 스테이지된 변경이 있으면 그것을, 없으면 언스테이지 변경을 + 현재 브랜치명 + 최근 커밋 10개를 자동 채움 |
+| `branch-or-files` | git 저장소면 `branch-diff`처럼 동작. 아니면 현재 디렉터리의 파일 목록 + 50KB 미만 파일 내용(총 80KB 한도)을 채움. 비-git 환경에서도 안전하게 동작 |
 
 ### `action` (모델 응답 후 실행)
 
@@ -351,6 +353,66 @@ description: 변경 로그에서 사용자 친화 릴리스 노트 작성
 gemma run release-note CHANGELOG.md --arg lang=ko
 ```
 
+### 기본 제공 프로젝트 스킬: `jira`
+
+`./.gemma/skills/jira.md` — 입력 모드 `branch-or-files`를 사용해 **지라 일감 설명 본문**을 생성한다.
+
+- **git 저장소인 경우**: 현재 브랜치(`<base>...HEAD`) 기준 커밋 로그 + 통합 diff를 자동 수집.
+- **git 저장소가 아닌 경우**: git 명령을 호출하지 않고, 현재 디렉터리의 파일 목록 + 파일 내용(50KB 미만, 총 80KB 한도)을 수집.
+
+출력은 다음 섹션을 따른다:
+
+`## 개요 → ## 배경 → ## 설계 → ## 변경 내용 → ## 기술 스펙 → ## 영향 범위 → ## 테스트 → ## 참고`
+
+브랜치명에서 `[A-Z]{2,}-\d+` 이슈 키가 감지되면 개요 맨 앞에 `[KEY]`로 자동 표기. 사용 예:
+
+```bash
+# git 저장소에서: 커밋된 변경을 정리
+git add -A && git commit -m "..."
+gemma /jira                          # base=main
+gemma /jira --base develop
+
+# git 저장소가 아닌 곳에서: 현재 디렉터리 파일 기반
+cd ~/scratch/some-prototype
+gemma /jira                          # git 호출 없이 파일 트리/내용으로 정리
+
+# 출력만 클립보드로 복사 (macOS)
+gemma /jira | pbcopy
+```
+
+> git 저장소에서는 **커밋된 변경만 분석**한다. 작업 중인 파일을 포함하려면 먼저 커밋하거나 임시 커밋(`git commit -m "wip"` → 나중에 `git reset --soft HEAD~1`)을 만든 뒤 실행.
+
+### 다른 프로젝트에서도 같은 스킬 쓰기 (전역 등록)
+
+스킬은 두 위치 중 한 곳에 두면 된다:
+
+| 위치 | 범위 | 추천 시점 |
+|------|------|-----------|
+| `./.gemma/skills/jira.md` | 이 저장소에서만 | 팀과 함께 커밋해 공유할 때 |
+| `~/.config/gemma-cli/skills/jira.md` | 사용자 전역(모든 프로젝트) | 개인 도구로 어디서나 쓰고 싶을 때 |
+
+전역으로 옮기는 방법은 둘 중 하나:
+
+```bash
+# 방법 A: 복사 (스킬 본문이 향후 갈라져도 무방할 때)
+mkdir -p ~/.config/gemma-cli/skills
+cp ./.gemma/skills/jira.md ~/.config/gemma-cli/skills/jira.md
+
+# 방법 B: 심볼릭 링크 (이 저장소의 스킬을 그대로 공유 — 한 곳만 수정)
+mkdir -p ~/.config/gemma-cli/skills
+ln -sf "$PWD/.gemma/skills/jira.md" ~/.config/gemma-cli/skills/jira.md
+```
+
+이후 임의의 git 저장소에서 다음과 같이 동작한다:
+
+```bash
+cd ~/work/another-project
+gemma /jira              # 현재 디렉터리의 브랜치 기준으로 동일하게 동작
+gemma /jira --base develop
+```
+
+`branch-diff`는 항상 **현재 작업 디렉터리의 git 저장소**를 기준으로 동작하므로, 다른 프로젝트에서도 그 프로젝트의 브랜치 변경이 그대로 입력된다.
+
 ---
 
 ## 7. 설정 파일
@@ -380,6 +442,59 @@ commands:
 ```
 
 설정 파일이 없으면 위 기본값으로 동작.
+
+### 환경변수로 다른 프로젝트에서도 쓰기
+
+`gemma`를 어느 디렉터리에서나 호출하려면 두 가지를 한 번씩 맞춰두면 끝난다.
+
+**1) 전역 설치 — `gemma` 실행 파일을 PATH에 등록**
+
+```bash
+# 이 저장소에서 단 한 번
+uv tool install .
+
+# uv tool의 기본 설치 위치는 ~/.local/bin
+# zsh: ~/.zshrc, bash: ~/.bashrc 에 추가 (이미 있으면 생략)
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
+# 확인
+which gemma           # → /Users/<you>/.local/bin/gemma
+gemma --help
+```
+
+업데이트는 코드 변경 후 같은 디렉터리에서 `uv tool install . --reinstall`.
+
+**2) 설정/스킬 경로 — 선택적으로 `XDG_CONFIG_HOME` 지정**
+
+별도 환경변수를 설정하지 않으면 `~/.config/gemma-cli/` 가 그대로 쓰인다. 위치를 바꾸고 싶을 때만 `XDG_CONFIG_HOME`을 설정한다.
+
+```bash
+# 예: 설정/스킬을 ~/dotfiles/config 아래에 모아두고 싶을 때
+echo 'export XDG_CONFIG_HOME="$HOME/dotfiles/config"' >> ~/.zshrc
+source ~/.zshrc
+
+# 이후 gemma는 다음 경로를 본다
+#   설정      $XDG_CONFIG_HOME/gemma-cli/config.yaml
+#   전역 스킬 $XDG_CONFIG_HOME/gemma-cli/skills/*.md
+```
+
+설정한 경로에 `config.yaml`이 없어도 ollama 기본값(`localhost:11434`, `gemma4:e4b`)으로 동작한다. ollama 서버 주소를 환경별로 바꾸려면 `config.yaml`의 `host:` 또는 `OLLAMA_HOST` 환경변수를 사용 (ollama 클라이언트 표준).
+
+**다른 프로젝트에서 동일하게 브랜치 기준으로 작업 정리하기**
+
+```bash
+# 한 번만: 스킬을 전역으로 노출 (위 "전역 등록" 섹션 참고)
+ln -sf "$PWD/.gemma/skills/jira.md" ~/.config/gemma-cli/skills/jira.md
+
+# 이후 어느 프로젝트에서나
+cd ~/work/another-repo
+gemma /jira                    # 그 저장소의 main...HEAD 기준
+gemma /jira --base develop     # base 변경
+gemma /commit                  # 동일 방식으로 commit 스킬도 전역 사용 가능
+```
+
+`branch-diff`는 항상 `cwd`의 git 저장소를 기준으로 수집하므로 별도 설정 없이 프로젝트마다 올바르게 동작한다.
 
 저장 경로 요약:
 
