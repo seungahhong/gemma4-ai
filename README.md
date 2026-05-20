@@ -14,8 +14,11 @@ gemma ────┬── review     코드 리뷰
           ├── ask        자유 질의 (단발 / REPL / 세션 재개)
           ├── skills     등록된 사용자 정의 스킬 목록
           ├── run NAME   스킬 실행
+          ├── NAME       스킬 실행 (1급 커맨드 — `.gemma/skills/NAME.md`를 두면 자동 노출)
           └── /NAME      스킬 실행 (슬래시 alias, 예: gemma /commit)
 ```
+
+> `.gemma/skills/<이름>.md`(또는 전역 스킬)를 추가하기만 하면 **코드 수정 없이** `gemma <이름>`로 호출되고 `gemma --help` 목록에도 나타난다. 빌트인과 이름이 겹치면(`commit`/`pr`) 빌트인이 우선이며, 스킬 쪽은 `/commit`처럼 슬래시로 부른다.
 
 ## 아키텍처
 
@@ -65,11 +68,11 @@ gemma ────┬── review     코드 리뷰
 # 별도 터미널
 ollama serve
 
-# 모델 받기 (기본 권장: 가벼운 e4b)
-ollama pull gemma4:e4b
-
-# refactor·리뷰 품질을 더 높이고 싶다면 큰 모델도 받아두기
+# 모델 받기 (권장 구성: 코드 작업 기본 모델 26b)
 ollama pull gemma4:26b
+
+# 가벼운 자유 질의(ask)용 e4b
+ollama pull gemma4:e4b
 ```
 
 `git`은 `review`/`commit`/`pr`/`refactor` 사용 시 필수. `gh` CLI는 `pr` 명령어로 실제 PR을 생성할 때만 필요.
@@ -99,12 +102,12 @@ curl -s http://localhost:11434/api/version
 # 2) 기본 설정 파일 생성 (선택)
 mkdir -p ~/.config/gemma-cli
 cat > ~/.config/gemma-cli/config.yaml <<'YAML'
-model: gemma4:e4b
+model: gemma4:26b        # 기본값 — ask 를 제외한 모든 명령이 사용
 host: http://localhost:11434
 temperature: 0.2
 commands:
-  refactor:
-    model: gemma4:26b   # 리팩토링은 더 큰 모델이 안정적
+  ask:
+    model: gemma4:e4b    # 자유 질의는 가벼운 e4b 로 빠르게
 YAML
 
 # 3) 사용해보기
@@ -182,7 +185,7 @@ gemma refactor src/foo.py -i "함수 분리하고 타입 힌트 추가"
 ```
 
 - `-i / --instruction` — 리팩토링 지시. 생략 시 기본값 `"가독성과 유지보수성을 개선해줘."`
-- `e4b` 모델은 diff 형식이 가끔 깨질 수 있어 **`commands.refactor.model: gemma4:26b` 오버라이드 권장**
+- diff 정확도를 위해 `refactor`는 기본 모델 `gemma4:26b`를 사용한다(권장 구성 기준). `e4b`는 diff 형식이 가끔 깨질 수 있다.
 - patch 적용 실패 시 원본 파일은 변경되지 않고 사유가 표시됨
 
 ### `analyze` — 구조/의존성 분석
@@ -225,8 +228,12 @@ gemma run <이름> path/to/dir/                   # 디렉터리 묶음을 {{inp
 gemma run <이름> --input "인라인 텍스트"        # 인라인 텍스트
 gemma run <이름> --input "..." --arg lang=en   # 추가 변수 치환
 
+# 1급 커맨드 — 발견된 스킬은 빌트인처럼 직접 호출된다(빌트인과 겹치지 않는 이름).
+gemma <이름>                                     # == gemma run <이름>
+gemma <이름> --base develop                      # run 과 동일 옵션 (INPUT_PATH/--arg/--input/--base)
+
 # 슬래시 alias — 첫 인자가 '/'로 시작하면 자동으로 `run`으로 라우팅된다.
-gemma /commit                                   # == gemma run commit
+gemma /commit                                   # == gemma run commit  (동명 빌트인이 있어도 스킬 실행)
 gemma /pr --base develop                        # == gemma run pr --base develop
 ```
 
@@ -413,6 +420,23 @@ gemma /jira --base develop
 
 `branch-diff`는 항상 **현재 작업 디렉터리의 git 저장소**를 기준으로 동작하므로, 다른 프로젝트에서도 그 프로젝트의 브랜치 변경이 그대로 입력된다.
 
+### 기본 제공 프로젝트 스킬: `qa`
+
+`./.gemma/skills/qa.md` — jira와 같은 `branch-or-files` 입력 모드로, 변경 코드를 **QA 관점에서 검증**한다(jira가 "무엇을 했나"라면 qa는 "무엇이 위험한가").
+
+출력 섹션:
+
+`## 요약 → ## 발견 이슈(심각도 [높음]/[중간]/[낮음]) → ## 엣지 케이스 점검 → ## 테스트 커버리지 갭 → ## 회귀 위험 → ## 권장 조치`
+
+```bash
+git add -A && git commit -m "..."
+gemma /qa                            # 현재 브랜치(main...HEAD) 변경을 QA 리뷰
+gemma /qa --base develop
+gemma qa src/lib/expense.ts          # 특정 파일만 검토
+```
+
+> jira·qa 모두 `.gemma/skills/*.md` 파일 하나로 동작한다. 새 스킬을 추가하려면 같은 형식의 `.md`를 떨어뜨리기만 하면 `gemma <이름>` / `gemma /<이름>`로 즉시 호출되고 `gemma --help`에도 노출된다(§4 1급 커맨드).
+
 ---
 
 ## 7. 설정 파일
@@ -422,8 +446,8 @@ gemma /jira --base develop
 전체 옵션:
 
 ```yaml
-# 기본 모델
-model: gemma4:e4b
+# 기본 모델 — ask 를 제외한 모든 명령(review/commit/pr/refactor/analyze/run·스킬)이 사용
+model: gemma4:26b
 
 # ollama 서버 주소
 host: http://localhost:11434
@@ -433,15 +457,15 @@ temperature: 0.2
 
 # 명령어별 오버라이드 (선택)
 commands:
-  refactor:
-    model: gemma4:26b      # 더 정확한 diff 필요
   ask:
-    temperature: 0.7       # 자유 질의는 약간 더 풀어주기
-  analyze:
-    model: gemma4:26b
+    model: gemma4:e4b      # 자유 질의는 가벼운 e4b 로 빠르게(저비용·저지연)
+    temperature: 0.7       # 약간 더 풀어주기
 ```
 
-설정 파일이 없으면 위 기본값으로 동작.
+> **권장 구성**: 정확도가 중요한 코드 작업(리뷰·커밋·PR·리팩토링·분석·스킬)은 기본 `gemma4:26b`,
+> 가벼운 자유 질의(`ask`)만 `gemma4:e4b`로 오버라이드. `run`(스킬)은 별도 키가 없으면 기본값 26b를 따른다.
+
+설정 파일이 없으면 코드 기본값(`gemma4:e4b`, `localhost:11434`, `temperature 0.2`)으로 동작하므로, 위 권장 구성을 쓰려면 `config.yaml`을 만들어 둔다.
 
 ### 환경변수로 다른 프로젝트에서도 쓰기
 
@@ -540,10 +564,10 @@ uv run gemma ask "테스트"
 | 증상 | 원인 / 해결 |
 |------|-------------|
 | `ollama 서버에 연결할 수 없습니다` | 별도 터미널에서 `ollama serve` 실행 |
-| `model 'gemma4:e4b' not found` | `ollama pull gemma4:e4b` |
+| `model 'gemma4:26b' not found` (또는 `gemma4:e4b`) | `ollama pull gemma4:26b` / `ollama pull gemma4:e4b` |
 | `gemma commit` → "스테이징된 변경이 없습니다" | `git add <파일>` 후 다시 시도 |
 | `gemma pr` → "...와 비교한 변경사항이 없습니다" | `--base` 브랜치가 맞는지, 커밋이 푸시되었는지 확인 |
-| `gemma refactor` → `corrupt patch` | 모델이 만든 diff 형식이 깨짐. `commands.refactor.model: gemma4:26b`로 변경 |
+| `gemma refactor` → `corrupt patch` | 모델이 만든 diff 형식이 깨짐. 기본 모델을 `gemma4:26b`로 두었는지 확인(`config.yaml`의 `model:`) |
 | `gh` CLI 없이 `gemma pr` 승인 | 본문이 콘솔에 출력되니 직접 복사해 PR 생성 |
 | 응답이 너무 짧다 / 보수적이다 | `temperature: 0.6` 정도로 올려보기 |
 | 응답이 영어로 나온다 | `GEMMA.md`에 "모든 답변은 한국어"를 명시하거나 시스템 프롬프트 확인 |

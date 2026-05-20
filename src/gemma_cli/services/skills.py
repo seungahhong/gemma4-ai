@@ -45,7 +45,12 @@ def _project_skill_dir(start: Path | None = None) -> Path | None:
 
 
 def _parse_skill(path: Path) -> Skill | None:
-    text = path.read_text(encoding="utf-8")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        # 깨진 심볼릭 링크·권한 문제 등 읽을 수 없는 파일은 조용히 건너뛴다.
+        # (스킬 하나의 문제가 전체 디스커버리/CLI help 를 막아선 안 된다)
+        return None
     name = path.stem
     description = ""
     action = "print"
