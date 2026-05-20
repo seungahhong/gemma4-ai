@@ -52,6 +52,17 @@ def test_project_skill_overrides_user(tmp_home: Path, tmp_path: Path, monkeypatc
     assert "PROJ" in found["review"].body
 
 
+def test_discovery_skips_dangling_symlink(tmp_home: Path) -> None:
+    # 읽을 수 없는 파일(끊긴 심볼릭 링크) 하나가 전체 디스커버리를 깨면 안 된다.
+    skill_dir = tmp_home / ".config" / "gemma-cli" / "skills"
+    _write_skill(skill_dir / "ok.md", name="ok", description="정상", body="{{input}}")
+    dangling = skill_dir / "broken.md"
+    dangling.symlink_to(skill_dir / "does-not-exist.md")
+    found = skills_svc.discover_skills()  # 예외 없이 동작해야 한다
+    assert "ok" in found
+    assert "broken" not in found
+
+
 def test_skill_render_substitutes_input_and_args(tmp_home: Path) -> None:
     _write_skill(
         tmp_home / ".config" / "gemma-cli" / "skills" / "x.md",

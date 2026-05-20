@@ -44,24 +44,18 @@ def _parse_arg(value: str) -> tuple[str, str]:
     return k.strip(), v
 
 
-@click.command("run", help="등록된 스킬을 실행한다.")
-@click.argument("name")
-@click.argument("input_path", required=False, type=click.Path(exists=True, path_type=Path))
-@click.option("--arg", "args_raw", multiple=True, help="템플릿 변수 KEY=VAL (다중 지정 가능)")
-@click.option("--input", "input_text", default=None, help="입력 텍스트를 인라인으로 전달")
-@click.option("--base", default=None, help="branch-diff input 사용 시 base 브랜치 오버라이드")
-def skills_run(
-    name: str,
-    input_path: Path | None,
-    args_raw: tuple[str, ...],
-    input_text: str | None,
-    base: str | None,
+def run_skill(
+    skill: skills_svc.Skill,
+    *,
+    input_path: Path | None = None,
+    args_raw: tuple[str, ...] = (),
+    input_text: str | None = None,
+    base: str | None = None,
 ) -> None:
-    skill = skills_svc.find_skill(name)
-    if skill is None:
-        available = ", ".join(skills_svc.discover_skills().keys()) or "(없음)"
-        raise click.UsageError(f"스킬을 찾을 수 없습니다: {name}\n사용 가능: {available}")
+    """스킬 1개를 입력 수집 → 렌더 → ollama 호출 → action 순서로 실행한다.
 
+    `run` 빌트인 커맨드와 동적으로 등록된 스킬 커맨드가 공유하는 핵심 로직.
+    """
     content = ""
     if input_text is not None:
         content = input_text
@@ -94,3 +88,64 @@ def skills_run(
         rc = actions_svc.execute_action(skill.action, response)
         if rc != 0:
             raise click.exceptions.Exit(rc)
+
+
+def make_skill_command(skill: skills_svc.Skill) -> click.Command:
+    """발견된 스킬을 1급 Click 커맨드로 변환한다.
+
+    `gemma <스킬명> [INPUT_PATH] [--arg K=V] [--input TEXT] [--base B]` 형태로
+    `gemma run <스킬명>`과 동일하게 동작한다. `SkillGroup`이 동적으로 호출한다.
+    """
+    desc = skill.description or "(설명 없음)"
+
+    @click.command(
+        name=skill.name,
+        short_help=f"[스킬] {desc}",
+        help=f"[사용자 정의 스킬] {desc}\n\n출처: {skill.source}",
+    )
+    @click.argument("input_path", required=False, type=click.Path(exists=True, path_type=Path))
+    @click.option("--arg", "args_raw", multiple=True, help="템플릿 변수 KEY=VAL (다중 지정 가능)")
+    @click.option("--input", "input_text", default=None, help="입력 텍스트를 인라인으로 전달")
+    @click.option("--base", default=None, help="branch-diff input 사용 시 base 브랜치 오버라이드")
+    def _skill_cmd(
+        input_path: Path | None,
+        args_raw: tuple[str, ...],
+        input_text: str | None,
+        base: str | None,
+    ) -> None:
+        run_skill(
+            skill,
+            input_path=input_path,
+            args_raw=args_raw,
+            input_text=input_text,
+            base=base,
+        )
+
+    return _skill_cmd
+
+
+@click.command("run", help="등록된 스킬을 실행한다.")
+@click.argument("name")
+@click.argument("input_path", required=False, type=click.Path(exists=True, path_type=Path))
+@click.option("--arg", "args_raw", multiple=True, help="템플릿 변수 KEY=VAL (다중 지정 가능)")
+@click.option("--input", "input_text", default=None, help="입력 텍스트를 인라인으로 전달")
+@click.option("--base", default=None, help="branch-diff input 사용 시 base 브랜치 오버라이드")
+def skills_run(
+    name: str,
+    input_path: Path | None,
+    args_raw: tuple[str, ...],
+    input_text: str | None,
+    base: str | None,
+) -> None:
+    skill = skills_svc.find_skill(name)
+    if skill is None:
+        available = ", ".join(skills_svc.discover_skills().keys()) or "(없음)"
+        raise click.UsageError(f"스킬을 찾을 수 없습니다: {name}\n사용 가능: {available}")
+
+    run_skill(
+        skill,
+        input_path=input_path,
+        args_raw=args_raw,
+        input_text=input_text,
+        base=base,
+    )
