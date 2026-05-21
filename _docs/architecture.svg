@@ -127,8 +127,8 @@
   <line x1="660" y1="570" x2="660" y2="600" class="arrow" marker-end="url(#arrowhead)"/>
   <line x1="850" y1="570" x2="850" y2="600" class="arrow" marker-end="url(#arrowhead)"/>
 
-  <!-- LAYER 4: External + Storage -->
-  <text x="40" y="605" class="layer-label">4. 외부 시스템 / 로컬 저장소</text>
+  <!-- LAYER 4: Model runtime + External tools + Storage -->
+  <text x="40" y="605" class="layer-label">4. 모델 런타임(인프로세스) / 외부 도구 / 로컬 저장소</text>
 
   <g>
     <rect x="60" y="615" width="270" height="115" rx="10" fill="#fef2f2" stroke="#fecaca"/>
