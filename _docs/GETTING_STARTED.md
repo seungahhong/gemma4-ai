@@ -1,8 +1,10 @@
 # 시작하기 — gemma-cli 환경 구축 가이드
 
-이 문서는 **빈 macOS 또는 Linux 환경에서 gemma-cli를 처음 설치하고 첫 명령을 성공적으로 실행할 때까지**의 모든 단계를 안내합니다. 명령어는 그대로 복사·붙여넣어 실행할 수 있으며, 각 단계마다 정상 동작을 확인하는 방법을 함께 적었습니다.
+이 문서는 **Apple Silicon macOS 환경에서 gemma-cli를 처음 설치하고 첫 명령을 성공적으로 실행할 때까지**의 모든 단계를 안내합니다. 명령어는 그대로 복사·붙여넣어 실행할 수 있으며, 각 단계마다 정상 동작을 확인하는 방법을 함께 적었습니다.
 
-소요 시간: 모델 다운로드 시간(약 10분)을 포함해 **20~30분**.
+모델 추론은 [`mlx-lm`](https://github.com/ml-explore/mlx-lm)으로 **인프로세스(in-process)** 실행됩니다. ollama 같은 별도 서버나 데몬을 띄울 필요가 없고, 모델은 처음 사용할 때 HuggingFace에서 자동 다운로드됩니다.
+
+소요 시간: 모델 다운로드 시간(약 5~10분)을 포함해 **15~25분**.
 
 ---
 
@@ -10,12 +12,15 @@
 
 | 항목 | 요구 | 확인 명령 |
 |------|------|-----------|
-| OS | macOS 12+ / Ubuntu 22.04+ | `uname -a` |
-| 디스크 여유 | 10GB 이상 (모델 + 도구) | `df -h ~` |
-| RAM | 8GB 이상(e4b) / 32GB 이상(26b) | macOS: `system_profiler SPHardwareDataType \| grep Memory` |
-| 인터넷 | 모델 다운로드용 (이후엔 오프라인 가능) | `curl -sI https://ollama.com \| head -1` |
+| OS | macOS 13+ | `sw_vers` |
+| 칩 | **Apple Silicon (arm64)** — `mlx-lm`은 Apple Silicon 전용 | `uname -m` → `arm64` |
+| 디스크 여유 | 5GB 이상(e4b) / 20GB 이상(27b) | `df -h ~` |
+| 메모리 | 16GB 이상(e4b) / 32GB 이상(27b 권장) | `system_profiler SPHardwareDataType \| grep Memory` |
+| 인터넷 | 모델 최초 다운로드용 (이후엔 오프라인 가능) | `curl -sI https://huggingface.co \| head -1` |
 
-기준에 못 미치면 더 가벼운 모델(`gemma4:e2b`)을 쓰거나 클라우드 인스턴스를 권장합니다.
+> `uname -m`이 `x86_64`(인텔 맥)거나 Linux라면 `mlx-lm`이 동작하지 않습니다. Apple Silicon 기기를 사용하세요.
+
+기준에 못 미치면 더 가벼운 모델(`mlx-community/gemma-3n-E2B-it-4bit`)을 쓰는 것을 권장합니다.
 
 ---
 
@@ -30,7 +35,6 @@ python3 --version
 ### 버전이 낮거나 없다면
 
 - **macOS:** `brew install python@3.12` (먼저 [Homebrew](https://brew.sh) 설치 필요)
-- **Ubuntu:** `sudo apt-get update && sudo apt-get install -y python3.12 python3.12-venv`
 
 설치 후 위 명령으로 다시 확인하세요.
 
@@ -63,95 +67,7 @@ uv --version
 
 ---
 
-## 3단계 — ollama 설치
-
-ollama는 로컬에서 LLM을 돌리는 서버입니다.
-
-### macOS
-
-```bash
-brew install ollama
-```
-
-또는 [ollama.com/download](https://ollama.com/download) 의 .dmg 설치.
-
-### Linux
-
-```bash
-curl -fsSL https://ollama.com/install.sh | sh
-```
-
-### 확인
-
-```bash
-ollama --version
-```
-
-**예상 출력:** `Warning: could not connect to a running Ollama instance` + `client version is 0.x.x`
-
-서버가 아직 안 떠 있어 경고가 나오는 게 정상입니다. 다음 단계에서 띄웁니다.
-
----
-
-## 4단계 — ollama 서버 시작
-
-새 터미널을 하나 더 열고 거기서 실행하세요. (이 터미널은 사용 동안 켜둬야 합니다.)
-
-```bash
-ollama serve
-```
-
-기존 터미널로 돌아와 확인:
-
-```bash
-curl -s http://localhost:11434/api/version
-```
-
-**예상 출력:** `{"version":"0.x.x"}`
-
-> **macOS GUI 앱으로 설치했다면?** 메뉴바에 ollama 아이콘이 있으면 이미 서버가 실행 중입니다. 따로 `ollama serve` 실행 불필요.
-
----
-
-## 5단계 — gemma4 모델 받기
-
-기본 모델(약 9.6GB) 다운로드:
-
-```bash
-ollama pull gemma4:e4b
-```
-
-> 시간이 좀 걸립니다(보통 5~10분). 진행 막대가 표시됩니다.
-
-리뷰·리팩토링 품질을 더 높이고 싶으면 큰 모델도 받아두세요(17GB, RAM 32GB+ 권장):
-
-```bash
-ollama pull gemma4:26b
-```
-
-### 확인
-
-```bash
-ollama list
-```
-
-**예상 출력:**
-```
-NAME          ID              SIZE      MODIFIED
-gemma4:e4b    c6eb396dbd59    9.6 GB    2 minutes ago
-```
-
-### 동작 확인 (모델이 제대로 깔렸는지)
-
-```bash
-ollama run gemma4:e4b "안녕? 한 줄로 답해줘."
-```
-
-한국어 응답이 한 줄 나오면 모델 OK. `/bye` 또는 `Ctrl+D`로 빠져나오세요.
-
----
-
-## 6단계 — gemma-cli 설치
+## 3단계 — gemma-cli 설치
 
 프로젝트 디렉터리로 이동:
 
@@ -160,6 +76,8 @@ cd /Users/seungah.hong/workspace/gemma4-ai
 ```
 
 > 자신의 경로에 맞게 바꿔주세요. git clone부터 한다면 `git clone <URL> gemma4-ai && cd gemma4-ai`.
+
+설치하면 의존성으로 `mlx-lm`이 함께 들어옵니다(Apple Silicon에서만 설치됨). 별도의 모델 서버 설치는 필요 없습니다.
 
 ### 옵션 A — 글로벌 도구로 설치 (추천)
 
@@ -200,9 +118,9 @@ uv run gemma --help   # 옵션 B
 
 ---
 
-## 7단계 — 첫 명령 실행
+## 4단계 — 첫 명령 실행 (모델 자동 다운로드)
 
-가장 간단한 자유 질의로 ollama·gemma-cli·gemma4 모두가 잘 연결되었는지 확인합니다:
+가장 간단한 자유 질의로 gemma-cli·MLX·gemma4 모두가 잘 연결되었는지 확인합니다. **처음 실행하는 모델은 HuggingFace에서 자동으로 다운로드**되므로 첫 응답까지는 다운로드 시간만큼 더 걸립니다(이후엔 캐시되어 빠릅니다).
 
 ```bash
 gemma ask "Python에서 list와 tuple의 차이를 한 줄로 알려줘."
@@ -210,42 +128,42 @@ gemma ask "Python에서 list와 tuple의 차이를 한 줄로 알려줘."
 
 스트리밍으로 한국어 답이 흘러나오고 마지막에 `(세션 ID: ...)`가 표시되면 **전체 파이프라인 OK**.
 
-> 응답이 안 나오고 멈춰 있다면? 다른 터미널에서 `ollama serve` 가 살아 있는지 확인 (`curl -s http://localhost:11434/api/version`).
+> 미리 모델을 받아두려면(선택): `uv run huggingface-cli download mlx-community/gemma-3n-E4B-it-lm-4bit`
+> 다운로드된 모델은 `~/.cache/huggingface/`에 캐시됩니다.
 
 ---
 
-## 8단계 — 권장 설정 파일 만들기 (선택)
+## 5단계 — 권장 설정 파일 만들기 (선택)
 
-`refactor`와 `review`는 e4b로도 동작하지만, diff 정확도와 분석 깊이는 `26b`가 확연히 좋습니다. 두 모델을 다 받았다면 명령어별로 골라 쓰도록 설정해두세요.
+코드 기본값은 가벼운 `mlx-community/gemma-3n-E4B-it-lm-4bit`입니다. `refactor`·`review` 같은 코드 작업은 더 큰 모델(`mlx-community/gemma-3-text-27b-it-4bit`)이 diff 정확도와 분석 깊이가 확연히 좋습니다. 명령어별로 골라 쓰도록 설정해두세요.
 
 ```bash
 mkdir -p ~/.config/gemma-cli
 cat > ~/.config/gemma-cli/config.yaml <<'YAML'
-model: gemma4:e4b
-host: http://localhost:11434
+# MLX 모델 경로(HuggingFace 저장소 이름 또는 로컬 MLX 디렉터리)
+model: mlx-community/gemma-3-text-27b-it-4bit   # 무거운 기본(약 15GB) — 코드 작업용
 temperature: 0.2
+max_tokens: 2048
 
 # 명령어별 오버라이드
 commands:
-  refactor:
-    model: gemma4:26b
-  review:
-    model: gemma4:26b
-  run:
-    model: gemma4:26b
+  ask:
+    model: mlx-community/gemma-3n-E4B-it-lm-4bit   # 자유 질의는 가벼운 e4b 로 빠르게
 YAML
 ```
+
+> 32GB 미만 메모리라면 27b가 버거울 수 있습니다. 모든 명령을 가볍게 쓰려면 `model:`을 `mlx-community/gemma-3n-E4B-it-lm-4bit`로 두세요.
 
 ### 확인
 
 ```bash
 cat ~/.config/gemma-cli/config.yaml
-gemma ask "어느 모델이 답하는 중이야?" 2>&1 | head -5
+gemma ask "한 줄로 자기소개 해줘." 2>&1 | head -5
 ```
 
 ---
 
-## 9단계 — `commit`·`pr` 스킬을 어디서나 쓸 수 있게 (선택)
+## 6단계 — `commit`·`pr` 스킬을 어디서나 쓸 수 있게 (선택)
 
 `gemma /commit`, `gemma /pr` 같은 슬래시 커맨드는 **사용자 스킬 디렉터리(`~/.config/gemma-cli/skills/`)** 에 스킬이 있어야 어느 git 저장소에서도 동작합니다. 프로젝트의 `.gemma/skills/` 두 파일을 글로벌로 복사:
 
@@ -273,7 +191,7 @@ gemma /commit       # 메시지 자동 생성 → 승인 → 커밋
 
 ---
 
-## 10단계 — 동작 시나리오 한 바퀴 돌려보기
+## 7단계 — 동작 시나리오 한 바퀴 돌려보기
 
 빠른 손풀이로 모든 명령어가 잘 도는지 확인합니다.
 
@@ -327,43 +245,38 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-### Q. `ollama 서버에 연결할 수 없습니다`
+### Q. `mlx-lm 패키지가 설치되어 있지 않습니다`
 
-다른 터미널의 `ollama serve`가 죽었거나, 다른 포트를 쓰고 있습니다.
+`mlx-lm`은 Apple Silicon 전용 의존성입니다. 설치를 다시 진행하세요.
 
 ```bash
-# 살아 있는지 확인
-curl -sI http://localhost:11434/api/version
-
-# 죽었으면 새 터미널에서 다시
-ollama serve
-
-# 포트가 점유되어 있다면 (다른 ollama 인스턴스가 있는지 확인)
-lsof -iTCP:11434 -sTCP:LISTEN
+uname -m                 # arm64 인지 확인 (x86_64면 동작 불가)
+uv pip install mlx-lm    # 또는 uv sync --extra dev
 ```
 
-### Q. `model 'gemma4:e4b' not found`
+### Q. `MLX 모델을 로드할 수 없습니다`
 
-모델이 안 받혀 있습니다.
+`config.yaml`의 `model:` 값이 올바른 MLX 모델 경로(HuggingFace 저장소 이름 또는 로컬 디렉터리)인지 확인하세요. 첫 실행은 다운로드로 시간이 걸릴 수 있습니다.
 
 ```bash
-ollama pull gemma4:e4b
+# 모델을 미리 받아 캐시 상태 확인
+uv run huggingface-cli download mlx-community/gemma-3n-E4B-it-lm-4bit
 ```
 
-### Q. 응답이 매우 느립니다
+### Q. 응답이 매우 느리거나 메모리가 부족합니다
 
-`gemma4:26b`는 무겁습니다. RAM 부족이면 macOS 활성 상태 보기에서 "스왑 사용" 수치가 치솟습니다. 두 가지 해결:
+`mlx-community/gemma-3-text-27b-it-4bit`는 무겁습니다(약 15GB, 메모리 32GB+ 권장). 메모리가 부족하면 macOS 활성 상태 보기에서 "스왑 사용"이 치솟습니다. 더 가벼운 모델로 바꾸세요:
 
 ```bash
-# 가벼운 모델로 임시 전환
-gemma ask --help    # (e4b가 기본)
-
-# 또는 설정에서 26b 오버라이드 제거
+# config.yaml의 model: 을 e4b로 변경
+#   model: mlx-community/gemma-3n-E4B-it-lm-4bit
+# 또는 더 작은
+#   model: mlx-community/gemma-3n-E2B-it-4bit
 ```
 
 ### Q. `gemma /commit` 에서 메시지가 이상하게 짧거나 형식이 깨집니다
 
-작은 모델(e4b)이 복잡한 프롬프트를 따라가지 못해서 그렇습니다. 8단계의 `commands.run.model: gemma4:26b` 오버라이드를 권장.
+작은 모델이 복잡한 프롬프트를 따라가지 못해서 그렇습니다. `config.yaml`에 `commands.run.model: mlx-community/gemma-3-text-27b-it-4bit` 오버라이드를 권장.
 
 ### Q. `gemma pr` 이 실행되지만 PR이 안 만들어집니다
 
@@ -376,7 +289,7 @@ gh auth login
 
 ### Q. `gemma refactor` → `error: corrupt patch at line N`
 
-작은 모델이 만든 diff 형식이 깨졌습니다. 원본 파일은 그대로 보존됩니다. 8단계의 `commands.refactor.model: gemma4:26b` 오버라이드를 권장.
+작은 모델이 만든 diff 형식이 깨졌습니다. 원본 파일은 그대로 보존됩니다. `config.yaml`에 `commands.refactor.model: mlx-community/gemma-3-text-27b-it-4bit` 오버라이드를 권장.
 
 ### Q. 응답이 영어로 나옵니다
 

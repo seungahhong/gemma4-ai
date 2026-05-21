@@ -7,7 +7,7 @@ import click
 
 from gemma_cli.commands._common import load_cfg, make_client, run_async, stream_chat
 from gemma_cli.services import approval, git_ops, prompts
-from gemma_cli.services.ollama_client import Message
+from gemma_cli.services.mlx_client import Message
 
 
 def _split_title_body(text: str) -> tuple[str, str]:

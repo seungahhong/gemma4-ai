@@ -4,7 +4,7 @@ import click
 
 from gemma_cli.commands._common import load_cfg, make_client, run_async, stream_chat
 from gemma_cli.services import prompts, session
-from gemma_cli.services.ollama_client import Message
+from gemma_cli.services.mlx_client import Message
 
 
 def _build_messages(history: list[Message], user_text: str) -> list[Message]:

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from gemma_cli.services.ollama_client import Message
+from gemma_cli.services.mlx_client import Message
 
 
 def sessions_dir() -> Path:

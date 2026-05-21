@@ -6,7 +6,7 @@ import click
 
 from gemma_cli.commands._common import load_cfg, make_client, read_path_content, run_async, stream_chat
 from gemma_cli.services import prompts
-from gemma_cli.services.ollama_client import Message
+from gemma_cli.services.mlx_client import Message
 
 
 @click.command(help="코드/디렉터리 구조와 의존성을 분석한다.")

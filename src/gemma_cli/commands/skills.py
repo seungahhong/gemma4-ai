@@ -9,7 +9,7 @@ from rich.table import Table
 from gemma_cli.commands._common import load_cfg, make_client, run_async, stream_chat
 from gemma_cli.services import actions as actions_svc
 from gemma_cli.services import skills as skills_svc
-from gemma_cli.services.ollama_client import Message
+from gemma_cli.services.mlx_client import Message
 
 
 @click.command("skills", help="사용 가능한 사용자 정의 스킬 목록을 보여준다.")
@@ -52,7 +52,7 @@ def run_skill(
     input_text: str | None = None,
     base: str | None = None,
 ) -> None:
-    """스킬 1개를 입력 수집 → 렌더 → ollama 호출 → action 순서로 실행한다.
+    """스킬 1개를 입력 수집 → 렌더 → MLX 호출 → action 순서로 실행한다.
 
     `run` 빌트인 커맨드와 동적으로 등록된 스킬 커맨드가 공유하는 핵심 로직.
     """

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from gemma_cli.services import session
-from gemma_cli.services.ollama_client import Message
+from gemma_cli.services.mlx_client import Message
 
 
 def test_append_and_load_roundtrip(tmp_path: Path) -> None:

@@ -6,7 +6,7 @@ import click
 
 from gemma_cli.commands._common import load_cfg, make_client, read_path_content, run_async, stream_chat
 from gemma_cli.services import git_ops, prompts
-from gemma_cli.services.ollama_client import Message
+from gemma_cli.services.mlx_client import Message
 
 
 @click.command(help="코드 리뷰. 인자가 없으면 git diff(staged 우선)를 사용한다.")

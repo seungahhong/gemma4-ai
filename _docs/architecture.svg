@@ -64,9 +64,9 @@
   </g>
   <g>
     <rect x="235" y="385" width="170" height="55" rx="6" fill="#ffffff" stroke="#facc15"/>
-    <text x="245" y="405" class="box-title">ollama_client.py</text>
-    <text x="245" y="423" class="box-body">httpx 스트리밍</text>
-    <text x="245" y="436" class="box-body">/api/chat 호출</text>
+    <text x="245" y="405" class="box-title">mlx_client.py</text>
+    <text x="245" y="423" class="box-body">mlx-lm 인프로세스</text>
+    <text x="245" y="436" class="box-body">stream_generate 호출</text>
   </g>
   <g>
     <rect x="415" y="385" width="170" height="55" rx="6" fill="#ffffff" stroke="#facc15"/>
@@ -118,7 +118,7 @@
     <text x="785" y="501" class="box-body">frontmatter · 치환</text>
   </g>
 
-  <text x="60" y="540" class="note">— 명령어별 모델 오버라이드(예: refactor → gemma4:26b)는 config.py가 결정 —</text>
+  <text x="60" y="540" class="note">— 명령어별 모델 오버라이드(예: refactor → gemma-3-text-27b-it-4bit)는 config.py가 결정 —</text>
   <text x="60" y="555" class="note">— GEMMA.md 지침은 모든 모델 호출 시 system 프롬프트 뒤에 자동 프리펜드 —</text>
 
   <!-- arrow -->
@@ -132,11 +132,11 @@
 
   <g>
     <rect x="60" y="615" width="270" height="115" rx="10" fill="#fef2f2" stroke="#fecaca"/>
-    <text x="75" y="638" class="box-title">ollama (HTTP)</text>
-    <text x="75" y="657" class="mono">http://localhost:11434</text>
-    <text x="75" y="676" class="box-body">POST /api/chat (stream)</text>
-    <text x="75" y="694" class="box-body">기본 모델: gemma4:e4b</text>
-    <text x="75" y="712" class="box-body">큰 모델: gemma4:26b</text>
+    <text x="75" y="638" class="box-title">MLX (인프로세스)</text>
+    <text x="75" y="657" class="mono">mlx-lm · Apple Silicon</text>
+    <text x="75" y="676" class="box-body">stream_generate (stream)</text>
+    <text x="75" y="694" class="box-body">기본 모델: gemma-3n-E4B-it-lm-4bit</text>
+    <text x="75" y="712" class="box-body">큰 모델: gemma-3-text-27b-it-4bit</text>
   </g>
 
   <g>

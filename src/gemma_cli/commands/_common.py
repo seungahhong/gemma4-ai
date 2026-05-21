@@ -8,7 +8,7 @@ import click
 
 from gemma_cli.services.config import Config, load_config
 from gemma_cli.services.instructions import with_instructions
-from gemma_cli.services.ollama_client import Message, OllamaClient, OllamaError
+from gemma_cli.services.mlx_client import Message, MLXClient, MLXError
 from gemma_cli.services.renderer import collect_stream, render_stream
 
 
@@ -16,9 +16,9 @@ def run_async(coro: Awaitable[object]) -> object:
     return asyncio.run(coro)  # type: ignore[arg-type]
 
 
-def make_client(cfg: Config, command_name: str) -> OllamaClient:
-    model, temp = cfg.for_command(command_name)
-    return OllamaClient(host=cfg.host, model=model, temperature=temp)
+def make_client(cfg: Config, command_name: str) -> MLXClient:
+    model, temp, max_tokens = cfg.for_command(command_name)
+    return MLXClient(model=model, temperature=temp, max_tokens=max_tokens)
 
 
 def load_cfg() -> Config:
@@ -49,12 +49,12 @@ def apply_instructions(messages: list[Message]) -> list[Message]:
     return [new_first, *messages[1:]]
 
 
-async def stream_chat(client: OllamaClient, messages: list[Message], *, render: bool = True) -> str:
+async def stream_chat(client: MLXClient, messages: list[Message], *, render: bool = True) -> str:
     messages = apply_instructions(messages)
     try:
         if render:
             return await render_stream(client.chat_stream(messages))
         return await collect_stream(client.chat_stream(messages))
-    except OllamaError as e:
+    except MLXError as e:
         click.secho(f"오류: {e}", fg="red", err=True)
         raise click.exceptions.Exit(1) from e

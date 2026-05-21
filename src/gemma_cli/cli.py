@@ -43,7 +43,7 @@ class SkillGroup(click.Group):
         return skills_cmd.make_skill_command(skill)
 
 
-@click.group(cls=SkillGroup, help="gemma4 + ollama 기반 로컬 개발 보조 CLI")
+@click.group(cls=SkillGroup, help="gemma4 + MLX 기반 로컬 개발 보조 CLI")
 @click.version_option(__version__, prog_name="gemma")
 def cli() -> None:
     pass

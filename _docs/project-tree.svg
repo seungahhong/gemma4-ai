@@ -72,8 +72,8 @@
   <text x="320" y="385" class="desc">YAML 설정 (model · temperature · 오버라이드)</text>
 
   <text x="85" y="405" class="branch">│       ├──</text>
-  <text x="180" y="405" class="file">ollama_client.py</text>
-  <text x="320" y="405" class="desc">httpx 스트리밍 · /api/chat</text>
+  <text x="180" y="405" class="file">mlx_client.py</text>
+  <text x="320" y="405" class="desc">mlx-lm 인프로세스 · stream_generate</text>
 
   <text x="85" y="425" class="branch">│       ├──</text>
   <text x="180" y="425" class="file">git_ops.py</text>
@@ -110,10 +110,10 @@
   <!-- tests -->
   <text x="40" y="595" class="branch">└──</text>
   <text x="85" y="595" class="dir">tests/</text>
-  <text x="320" y="595" class="desc">pytest — 모든 ollama 호출은 respx로 모킹</text>
+  <text x="320" y="595" class="desc">pytest — 모든 MLX 추론은 mlx_stub로 스텁</text>
 
   <text x="85" y="615" class="branch">    ├──</text>
-  <text x="150" y="615" class="file">test_config.py · test_ollama_client.py · test_git_ops.py</text>
+  <text x="150" y="615" class="file">test_config.py · test_mlx_client.py · test_git_ops.py</text>
 
   <text x="85" y="635" class="branch">    ├──</text>
   <text x="150" y="635" class="file">test_session.py · test_renderer.py · test_instructions.py</text>

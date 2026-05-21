@@ -1,9 +1,9 @@
 # gemma-cli
 
-`gemma4` (ollama) 기반 로컬 개발 보조 CLI. **코드 리뷰**, **커밋/PR 메시지 생성**, **리팩토링**, **코드 분석**, **자유 질의**를 단일 명령어 `gemma`에서 한국어로 제공한다. 사용자 정의 **프로젝트 지침(`GEMMA.md`)** 과 **스킬(`*.md`)** 도 지원.
+`gemma4` (MLX) 기반 로컬 개발 보조 CLI. **코드 리뷰**, **커밋/PR 메시지 생성**, **리팩토링**, **코드 분석**, **자유 질의**를 단일 명령어 `gemma`에서 한국어로 제공한다. 모델 추론은 Apple Silicon에서 [`mlx-lm`](https://github.com/ml-explore/mlx-lm)으로 인프로세스 실행 — 별도 서버가 필요 없다. 사용자 정의 **프로젝트 지침(`GEMMA.md`)** 과 **스킬(`*.md`)** 도 지원.
 
 > 🚀 **처음 설치하시는 분은 [`_docs/GETTING_STARTED.md`](_docs/GETTING_STARTED.md) 부터 보세요.**
-> Python·uv·ollama·gemma4·gemma-cli 설치와 첫 명령 성공까지 단계별 검증 포함.
+> Python·uv·MLX·gemma4·gemma-cli 설치와 첫 명령 성공까지 단계별 검증 포함.
 
 ```text
 gemma ────┬── review     코드 리뷰
@@ -59,21 +59,14 @@ gemma ────┬── review     코드 리뷰
 
 ## 1. 전제 조건
 
-- macOS / Linux
+- macOS (Apple Silicon) — `mlx-lm`이 Apple Silicon 전용이다.
 - Python ≥ 3.11
-- [ollama](https://ollama.com) 설치 (`brew install ollama` 또는 공식 설치 스크립트)
-- ollama 서버 실행 + 모델 다운로드:
+- 별도 서버나 데몬 불필요. 모델 추론은 `mlx-lm`으로 **인프로세스(in-process)** 실행되며, 모델은 처음 사용할 때 HuggingFace에서 자동 다운로드된다.
 
-```bash
-# 별도 터미널
-ollama serve
+> 모델을 미리 받아두려면(선택): `huggingface-cli download mlx-community/gemma-3n-E4B-it-lm-4bit`
+> 처음 명령 실행 시 자동으로도 받아진다.
 
-# 모델 받기 (권장 구성: 코드 작업 기본 모델 26b)
-ollama pull gemma4:26b
-
-# 가벼운 자유 질의(ask)용 e4b
-ollama pull gemma4:e4b
-```
+> ⚠️ **반드시 텍스트 전용 모델을 쓰세요.** 이 CLI는 텍스트 전용 `mlx-lm`을 사용합니다. `gemma-4`/`gemma-3n`의 e4b·26b, `gemma-3`의 4b/12b/27b는 모두 멀티모달(VLM)이라 로드하면 `Received N parameters not in model: language_model...` 오류로 실패합니다. 텍스트 전용 변형(`-lm` 또는 `-text-`)을 쓰세요 — 예: `mlx-community/gemma-3n-E4B-it-lm-4bit`, `mlx-community/gemma-3-text-27b-it-4bit`, `mlx-community/gemma-3-1b-it-4bit`.
 
 `git`은 `review`/`commit`/`pr`/`refactor` 사용 시 필수. `gh` CLI는 `pr` 명령어로 실제 PR을 생성할 때만 필요.
 
@@ -96,21 +89,18 @@ uv run gemma --help
 ## 3. 빠른 시작
 
 ```bash
-# 1) ollama 가동 확인
-curl -s http://localhost:11434/api/version
-
-# 2) 기본 설정 파일 생성 (선택)
+# 1) 기본 설정 파일 생성 (선택)
 mkdir -p ~/.config/gemma-cli
 cat > ~/.config/gemma-cli/config.yaml <<'YAML'
-model: gemma4:26b        # 기본값 — ask 를 제외한 모든 명령이 사용
-host: http://localhost:11434
+model: mlx-community/gemma-3-text-27b-it-4bit   # 기본값 — ask 를 제외한 모든 명령이 사용
 temperature: 0.2
+max_tokens: 2048
 commands:
   ask:
-    model: gemma4:e4b    # 자유 질의는 가벼운 e4b 로 빠르게
+    model: mlx-community/gemma-3n-E4B-it-lm-4bit   # 자유 질의는 가벼운 e4b 로 빠르게
 YAML
 
-# 3) 사용해보기
+# 2) 사용해보기 (첫 실행 시 모델 자동 다운로드)
 gemma ask "Python에서 list와 tuple 차이를 한 줄로 설명해줘."
 ```
 
@@ -185,7 +175,7 @@ gemma refactor src/foo.py -i "함수 분리하고 타입 힌트 추가"
 ```
 
 - `-i / --instruction` — 리팩토링 지시. 생략 시 기본값 `"가독성과 유지보수성을 개선해줘."`
-- diff 정확도를 위해 `refactor`는 기본 모델 `gemma4:26b`를 사용한다(권장 구성 기준). `e4b`는 diff 형식이 가끔 깨질 수 있다.
+- diff 정확도를 위해 `refactor`는 기본 모델(권장 구성: `mlx-community/gemma-3-text-27b-it-4bit`)을 사용한다. 더 작은 모델은 diff 형식이 가끔 깨질 수 있다.
 - patch 적용 실패 시 원본 파일은 변경되지 않고 사유가 표시됨
 
 ### `analyze` — 구조/의존성 분석
@@ -447,25 +437,26 @@ gemma qa src/lib/expense.ts          # 특정 파일만 검토
 
 ```yaml
 # 기본 모델 — ask 를 제외한 모든 명령(review/commit/pr/refactor/analyze/run·스킬)이 사용
-model: gemma4:26b
-
-# ollama 서버 주소
-host: http://localhost:11434
+# 값은 MLX 모델 경로(HuggingFace 저장소 이름 또는 로컬 MLX 디렉터리)
+model: mlx-community/gemma-3-text-27b-it-4bit
 
 # 0.0(보수적) ~ 1.0+(창의적). 기본 0.2
 temperature: 0.2
 
-# 명령어별 오버라이드 (선택)
+# 생성 토큰 상한. 기본 2048 (MLX는 명시적 상한이 필요)
+max_tokens: 2048
+
+# 명령어별 오버라이드 (선택) — model / temperature / max_tokens
 commands:
   ask:
-    model: gemma4:e4b      # 자유 질의는 가벼운 e4b 로 빠르게(저비용·저지연)
-    temperature: 0.7       # 약간 더 풀어주기
+    model: mlx-community/gemma-3n-E4B-it-lm-4bit   # 자유 질의는 가벼운 e4b 로 빠르게(저비용·저지연)
+    temperature: 0.7                            # 약간 더 풀어주기
 ```
 
-> **권장 구성**: 정확도가 중요한 코드 작업(리뷰·커밋·PR·리팩토링·분석·스킬)은 기본 `gemma4:26b`,
-> 가벼운 자유 질의(`ask`)만 `gemma4:e4b`로 오버라이드. `run`(스킬)은 별도 키가 없으면 기본값 26b를 따른다.
+> **권장 구성**: 정확도가 중요한 코드 작업(리뷰·커밋·PR·리팩토링·분석·스킬)은 기본 `mlx-community/gemma-3-text-27b-it-4bit`,
+> 가벼운 자유 질의(`ask`)만 `mlx-community/gemma-3n-E4B-it-lm-4bit`로 오버라이드. `run`(스킬)은 별도 키가 없으면 기본 `model`을 따른다.
 
-설정 파일이 없으면 코드 기본값(`gemma4:e4b`, `localhost:11434`, `temperature 0.2`)으로 동작하므로, 위 권장 구성을 쓰려면 `config.yaml`을 만들어 둔다.
+설정 파일이 없으면 코드 기본값(`mlx-community/gemma-3n-E4B-it-lm-4bit`, `temperature 0.2`, `max_tokens 2048`)으로 동작하므로, 위 권장 구성을 쓰려면 `config.yaml`을 만들어 둔다.
 
 ### 환경변수로 다른 프로젝트에서도 쓰기
 
@@ -503,7 +494,7 @@ source ~/.zshrc
 #   전역 스킬 $XDG_CONFIG_HOME/gemma-cli/skills/*.md
 ```
 
-설정한 경로에 `config.yaml`이 없어도 ollama 기본값(`localhost:11434`, `gemma4:e4b`)으로 동작한다. ollama 서버 주소를 환경별로 바꾸려면 `config.yaml`의 `host:` 또는 `OLLAMA_HOST` 환경변수를 사용 (ollama 클라이언트 표준).
+설정한 경로에 `config.yaml`이 없어도 코드 기본값(`mlx-community/gemma-3n-E4B-it-lm-4bit`, `temperature 0.2`, `max_tokens 2048`)으로 동작한다. 사용할 모델은 `config.yaml`의 `model:`로 바꾼다(HuggingFace 저장소 이름 또는 로컬 MLX 디렉터리 경로).
 
 **다른 프로젝트에서 동일하게 브랜치 기준으로 작업 정리하기**
 
@@ -538,7 +529,7 @@ gemma /commit                  # 동일 방식으로 commit 스킬도 전역 사
 # 의존성 설치 (개발 의존성 포함)
 uv sync --extra dev
 
-# 테스트 실행 (네트워크 없이 동작 - respx로 ollama 모킹)
+# 테스트 실행 (네트워크·모델 없이 동작 - mlx_stub로 MLX 추론 스텁)
 uv run pytest -q
 
 # 자세히
@@ -555,20 +546,56 @@ uv run gemma ask "테스트"
 프로젝트 구조는 [`_docs/project-tree.svg`](_docs/project-tree.svg) 참고. 핵심 책임:
 
 - `src/gemma_cli/commands/` — click 서브커맨드 정의 (빌트인 6 + 스킬 2)
-- `src/gemma_cli/services/` — 공통 인프라 (ollama·git·렌더링·세션·승인·액션·지침·스킬)
+- `src/gemma_cli/services/` — 공통 인프라 (mlx·git·렌더링·세션·승인·액션·지침·스킬)
 - `src/gemma_cli/__main__.py` — `gemma` 엔트리 + 슬래시 라우팅
-- `tests/` — pytest, 모든 ollama 호출은 `respx` 모킹
+- `tests/` — pytest, 모든 MLX 추론은 `mlx_stub` 픽스처로 스텁
 
 ## 9. 문제 해결
 
 | 증상 | 원인 / 해결 |
 |------|-------------|
-| `ollama 서버에 연결할 수 없습니다` | 별도 터미널에서 `ollama serve` 실행 |
-| `model 'gemma4:26b' not found` (또는 `gemma4:e4b`) | `ollama pull gemma4:26b` / `ollama pull gemma4:e4b` |
+| `command not found: gemma` (또는 `zsh: command not found: gemma`) | `gemma`가 PATH에 없음 — 글로벌 미설치이거나 개발 모드. 아래 [‘`gemma` 명령을 찾을 수 없을 때’](#gemma-명령을-찾을-수-없을-때) 참고 |
+| `mlx-lm 패키지가 설치되어 있지 않습니다` | Apple Silicon에서 `uv pip install mlx-lm` (또는 `uv sync`) 실행 |
+| `MLX 모델을 로드할 수 없습니다` | `config.yaml`의 `model:`이 올바른 MLX 모델 경로인지 확인. 첫 실행은 HF 다운로드로 시간이 걸릴 수 있다 |
+| 로드 시 `Received N parameters not in model: language_model...` | 멀티모달(VLM) 모델이라 텍스트 전용 `mlx-lm`이 못 읽음. 텍스트 전용 변형(`-lm`/`-text-`)으로 교체 — 예: `gemma-3n-E4B-it-lm-4bit`, `gemma-3-text-27b-it-4bit` |
+| 생성 중 `There is no Stream(gpu, N) in current thread` | MLX 스트림은 스레드-로컬. 모델 로드와 생성을 같은 스레드에서 수행해야 한다(현재 코드가 이미 그렇게 처리) |
 | `gemma commit` → "스테이징된 변경이 없습니다" | `git add <파일>` 후 다시 시도 |
 | `gemma pr` → "...와 비교한 변경사항이 없습니다" | `--base` 브랜치가 맞는지, 커밋이 푸시되었는지 확인 |
-| `gemma refactor` → `corrupt patch` | 모델이 만든 diff 형식이 깨짐. 기본 모델을 `gemma4:26b`로 두었는지 확인(`config.yaml`의 `model:`) |
+| `gemma refactor` → `corrupt patch` | 모델이 만든 diff 형식이 깨짐. 더 큰 모델(예: `mlx-community/gemma-3-text-27b-it-4bit`)을 `config.yaml`의 `model:`에 설정 |
 | `gh` CLI 없이 `gemma pr` 승인 | 본문이 콘솔에 출력되니 직접 복사해 PR 생성 |
 | 응답이 너무 짧다 / 보수적이다 | `temperature: 0.6` 정도로 올려보기 |
 | 응답이 영어로 나온다 | `GEMMA.md`에 "모든 답변은 한국어"를 명시하거나 시스템 프롬프트 확인 |
+
+### `gemma` 명령을 찾을 수 없을 때
+
+`gemma ask ...` 실행 시 `command not found: gemma`(zsh) / `gemma: command not found`(bash)가 나오면, 셸이 `gemma` 실행 파일을 PATH에서 찾지 못한 것이다. 설치 방식에 따라 대처한다.
+
+**1) 글로벌 도구로 설치한 경우 — PATH만 잡으면 됨**
+
+```bash
+# 설치돼 있는지 확인
+which gemma                       # 경로가 나오면 정상
+ls ~/.local/bin/gemma            # 파일이 있는지 직접 확인
+
+# 있는데도 'not found'면 PATH에 ~/.local/bin 이 없는 것
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc                  # 또는 새 터미널 열기
+#   uv tool update-shell 로 자동 등록도 가능
+```
+
+**2) 아직 글로벌 설치를 안 한 경우 — 설치하거나, 개발 모드로 호출**
+
+```bash
+# (A) 전역 설치 (프로젝트 루트에서) → 어디서나 gemma 사용
+uv tool install .
+which gemma
+
+# (B) 설치 없이 개발 모드로 바로 쓰기 — 'gemma' 대신 'uv run gemma'
+uv run gemma ask "질문"
+
+# (C) venv 실행 파일을 직접 호출
+.venv/bin/gemma ask "질문"
+```
+
+> 핵심: **전역 설치(`uv tool install .`)를 했으면 `gemma`**, 안 했으면 **`uv run gemma`** 또는 **`.venv/bin/gemma`** 로 호출한다. 전역 설치를 했는데도 안 보이면 거의 항상 `~/.local/bin`이 PATH에 없는 경우다.
 | `gemma run <이름>` → "찾을 수 없습니다" | `gemma skills`로 등록 위치/이름 확인. frontmatter `name:` 값이 사용된다 |
